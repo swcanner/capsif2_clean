@@ -331,10 +331,45 @@ if __name__ == '__main__':
         #just double down
     
         name = p.split('.')[0];
+        short_name = name[:name.rfind('_')]
+        
+        if short_name in done:
+            continue;
+        done.append(short_name)
+
+
+        chains = []
+        for ii in ls:
+            #print(ii)
+            if 'esm' in ii:
+                continue;
+            if short_name in ii:
+                n = ii.split('.')[0];
+                c = n[n.rfind('_'):];
+                chains.append(c)
+
+        #print(chains)
+
         cl += name + '|' + name + '\n'
 
-        out += name + ',' + name + ',' + output_dir + name + '.npz,'
-        out += output_dir + name + '_esm.npz.npy,,,\n'
+        #out += name + ',' + name + ',' + output_dir + name + '.npz,'
+        #out += output_dir + name + '_esm.npz.npy,,,\n'
+
+        out += name + ',' + name + ','
+        for jj in range(len(chains)):
+            out += output_dir + short_name + chains[jj] + '.npz'
+            if jj + 1 == len(chains):
+                continue;
+            out += '|'
+        out += ','
+        for jj in range(len(chains)):
+            out += output_dir + short_name + chains[jj] + '_esm.npz.npy'
+            if jj + 1 == len(chains):
+                continue;
+            out += '|'
+        out += ','
+
+        out += ',,\n'
 
     output_file = output_dir + 'dataset'
     f = open(output_file + "_pdb.csv",'w+')
