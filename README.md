@@ -1,4 +1,3 @@
-# capsif2_clean
 # CAPSIF2 and PiCAP #
 
 ![PiCAP](./picap_visual_abstract.jpg)
@@ -6,11 +5,10 @@
 This is the first iteration and very rough. Will add more later
 
 Libraries needed:
-Conda environment with pyrosetta, pytorch, tqdm, numpy, esm, and more - will make a yml soon...
+Conda environment with `pyrosetta, pytorch, tqdm, numpy, pandas, esm,` and more - will make a yml soon...
 
 
-## THIS NEXT STEP MIGHT WORK OR NOT - HAVENT TESTED IT YET ##
-### Quick Setup Guide ###
+### Quick Setup Guide - Proceed with caution, untested... ###
 ```
 We suggest using a conda environment for the installation.
 Steps:
@@ -28,7 +26,7 @@ channels:
 >> conda install pyrosetta
 ```
 
-The weights of each model are stored on our remote server `data.graylab.jhu.edu/picap/`
+The weights of each model are stored on our remote server [`data.graylab.jhu.edu/picap/`](data.graylab.jhu.edu/picap/)
 
 Download `picap.pt` and `capsif2.pt` to `capsif2_clean/models_DL/`
 
@@ -38,11 +36,11 @@ Put all PDB files into the `input_pdb/` directory
 ```
 >> python preprocess.py
 ```
-If using PiCAP:
+#### If using PiCAP: ####
 ```
 >> python predict_prot.py
 ```
-If using CAPSIF2:
+#### If using CAPSIF2: ####
 ```
 >> python predict_res.py
 ```
