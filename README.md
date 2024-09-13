@@ -35,13 +35,16 @@ Download `picap.pt` and `capsif2.pt` to `capsif2_clean/models_DL/`
 
 ## How to run ##
 Put all PDB files into the `input_pdb/` directory
-
+```
 >> python preprocess.py
-
+```
 If using PiCAP:
+```
 >> python predict_prot.py
-
+```
 If using CAPSIF2:
+```
 >> python predict_res.py
+```
 
 the predictions will then be outputted to `output_data/predictions_prot.csv` and `output_data/predictions_res.csv` for PiCAP and CAPSIF2, respectively
