@@ -26,7 +26,7 @@ channels:
 - defaults
 --------------------------------------------------------
 >> conda install pyrosetta
-
+```
 
 The weights of each model are stored on our remote server `data.graylab.jhu.edu/picap/`
 
