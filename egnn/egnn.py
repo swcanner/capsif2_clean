@@ -103,7 +103,7 @@ class E_GCL(nn.Module):
 
         #print("PostProcess:",h[row].shape,h[col].shape,radial.shape,edge_attr.shape)
         edge_feat = self.edge_model(h[row], h[col], radial, edge_attr)
-        
+
         coord = self.coord_model(coord, edge_index, coord_diff, edge_feat)
         h, agg = self.node_model(h, edge_index, edge_feat, node_attr)
         #print("h",torch.min(h).item(), torch.max(h).item(), torch.mean(h).item(), torch.std(h).item())
@@ -208,7 +208,7 @@ class PICAP(nn.Module):
             nn.Linear(self.hidden_nf, self.hidden_nf),
             nn.LayerNorm(self.hidden_nf),
             nn.GELU(),
-            nn.Dropout(0.1)    
+            nn.Dropout(0.1)
         )
 
         self.graph_module = nn.ModuleList()
@@ -319,19 +319,21 @@ class PICAP(nn.Module):
             h_prime, x_prime, _ = self.graph_module[i](h_prime, curr_edges, x_prime, edge_attr=curr_edge_feat)
             h_prime = self.graph_norm[i](h_prime)
             h_prime = self.graph_drop[i](h_prime)
+            h_prime = torch.nan_to_num(h_prime, nan=0.0)
 
         h_prot = h_0 + h_prime
         #if torch.any(torch.isnan(h_prot)):
         #    print("Res: Post-pred",h_prot)
-        #print('h0+', torch.any(torch.isnan(h_res)), h_res) 
+        #print('h0+', torch.any(torch.isnan(h_res)), h_res)
 
         h_prot = self.embedding_out(h_prot)
 
         #if torch.any(torch.isnan(h_prot)):
         #    print("Res: Post-emb",h_prot)
         #print('emb_out', torch.any(torch.isnan(h_res)), h_res)
-        
+
         h_prot = h_prot.unsqueeze(0)
+        h_prot = torch.nan_to_num(h_prot, nan=0.0)
         #h_prot = torch.sum(h_prot,dim = 1)
         #print("in ada track1:",h_prot.size())
 
@@ -340,30 +342,36 @@ class PICAP(nn.Module):
         h_prot = self.ada_pool(h_prot)
         #print("h_ada:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         h_prot = torch.unsqueeze(h_prot,0)
-        
+
         #h_ada = torch.transpose(h_ada,0,2)
         #print("h_ada:",h_prot.shape)
         #print("Prot track2:",h_prot.size())
         h_prot = self.conv_prot1(h_prot)
+        h_prot = torch.nan_to_num(h_prot, nan=0.0)
         #print("h_conv1:",h_prot.shape)
         #print("h_conv1:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         h_prot = self.conv_prot2(h_prot)
+        h_prot = torch.nan_to_num(h_prot, nan=0.0)
         #print("h_conv2:",h_prot.shape)
         #print("h_conv2:",torch.torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         #print("Prot track3:",h_prot.size())
         #print("h_conv:",h_ada.shape)
         h_prot = h_prot.flatten();
         h_prot = h_prot.unsqueeze(0)
+
         #print("h_flat:",h_prot.shape)
         #print("Prot track4:",h_prot.size())
         h_prot = self.mlp_prot1(h_prot )
+        h_prot = torch.nan_to_num(h_prot, nan=0.0)
         #if torch.any(torch.isnan(h_prot)):
         #        print("Prot mlp_boi")
         #print("h_mlp1:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         #print(self.mlp_prot1)
         h_prot = self.mlp_prot2( h_prot )
+        h_prot = torch.nan_to_num(h_prot, nan=0.0)
         #print("h_mlp2:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         h_prot = self.mlp_prot3( h_prot )
+        h_prot = torch.nan_to_num(h_prot, nan=0.0)
         #print("h_mlp3:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         #"""
 
@@ -424,7 +432,7 @@ class CAPSIF2_RES2(nn.Module):
             nn.Linear(self.hidden_nf, self.hidden_nf // 2),
             nn.LayerNorm(self.hidden_nf // 2),
             nn.GELU(),
-            nn.Dropout(0.1),            
+            nn.Dropout(0.1),
         )
 
         self.embedding_out2 = nn.Linear(self.hidden_nf // 2, output_dim)
@@ -487,23 +495,26 @@ class CAPSIF2_RES2(nn.Module):
             h_prime, x_prime, _ = self.graph_module[i](h_prime, curr_edges, x_prime, edge_attr=curr_edge_feat)
             h_prime = self.graph_norm[i](h_prime)
             h_prime = self.graph_drop[i](h_prime)
+            h_prime = torch.nan_to_num(h_prime, nan=0.0)
 
         h_res = h_0 + h_prime
-        if torch.any(torch.isnan(h_res)):
-            print("Res: Post-pred",h_res)
-        #print('h0+', torch.any(torch.isnan(h_res)), h_res) 
-
+        #if torch.any(torch.isnan(h_res)):
+        #    print("Res: Post-pred",h_res)
+        #print('h0+', torch.any(torch.isnan(h_res)), h_res)
+        h_res = torch.nan_to_num(h_res, nan=0.0)
         h_res = self.embedding_out(h_res)
+        h_res = torch.nan_to_num(h_res, nan=0.0)
 
-        if torch.any(torch.isnan(h_res)):
-            print("Res: Post-emb",h_res)
+        #if torch.any(torch.isnan(h_res)):
+        #    print("Res: Post-emb",h_res)
         #print('emb_out', torch.any(torch.isnan(h_res)), h_res)
 
         h_res = self.embedding_out2(h_res)
+        h_res = torch.nan_to_num(h_res, nan=0.0)
 
         #h_res = self.norm_res(h_res)
-        if torch.any(torch.isnan(h_res)):
-            print("Res: Post-norm",h_res)
+        #if torch.any(torch.isnan(h_res)):
+        #    print("Res: Post-norm",h_res)
         #print('norm', torch.any(torch.isnan(h_res) ), h_res)
         h_res = torch.sigmoid(h_res)
 

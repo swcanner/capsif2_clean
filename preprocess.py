@@ -15,7 +15,6 @@ from pyrosetta import *
 from pyrosetta.rosetta import *
 from pyrosetta.teaching import *
 
-from pyrosetta.rosetta.protocols.carbohydrates import *
 from pyrosetta.rosetta.core.select.residue_selector import *
 from pyrosetta.rosetta.core.simple_metrics.metrics import *
 from pyrosetta.rosetta.core.simple_metrics.composite_metrics import *
@@ -95,6 +94,7 @@ def get_chain_coor(pose,chain):
         frame (arr) : array of all local frame ~
             x' = ca - n , y' = (ca - n) x (ca - c) , z' = x' x y'
         ref (arr): array of PDB nomenclature for each residue
+        beta (arr): array of BFactors/PLDDTs of the structure
     """
 
     start = pose.chain_begin(chain)
@@ -103,7 +103,7 @@ def get_chain_coor(pose,chain):
     cb = np.zeros((end-start+1,3))
     ca = np.zeros((end-start+1,3))
     ref_pdb = []
-    beta = 0
+    beta = []
     num_res = 0
 
     frame = np.zeros((end-start+1,3,3))
@@ -111,7 +111,7 @@ def get_chain_coor(pose,chain):
     for ii in range(start,end+1):
 
         res = pose.residue(ii);
-        beta += pose.pdb_info().temperature(ii,1)
+        beta.append( float( pose.pdb_info().temperature(ii,1) ) )
         num_res += 1
 
         if (res.is_protein() == False):
@@ -159,7 +159,7 @@ def get_chain_coor(pose,chain):
         ca[ii-start,:] = a;
         frame[ii-start,...] = ref
 
-    return cb, ca, frame, ref_pdb, beta / float(num_res)
+    return cb, ca, frame, ref_pdb, beta
 
 def rosetta_preprocess(f,output_dir):
 
@@ -192,7 +192,7 @@ def rosetta_preprocess(f,output_dir):
         if pose.residue(pose.chain_begin(c)).is_protein() == False:
             continue;
 
-        
+
 
         coor, label = get_protchainXYZ(pose,c)
         cb, ca, frame, ref_pdb, b = get_chain_coor(pose,c)
@@ -205,14 +205,81 @@ def rosetta_preprocess(f,output_dir):
         n = p + "_" + str(c)
         out_fasta.append([n,seq])
 
-        
+
 
         #output the coor file
         np.savez(output_dir + n + ".npz",ca=ca,cb=cb,frame=frame,ref=ref_pdb)
 
     return out_fasta, beta
 
-def esm_preprocess(fa,model,alphabet,batch_converter,output_dir):
+
+
+def rosetta_highPL_preprocess(f,output_dir):
+
+    """
+    function preprocess a specific file using pyrosetta to get coordinates and sequence
+    outputs a file
+
+    Args:
+        f : pdb file (str)
+        output_dir : where the output file will be dumped to (str)
+    Returns:
+        out_fasta : fasta sequence of all chains (arr)
+        ca_,cb_,f_,ref_, beta_
+    """
+
+    pose = pose_from_file(f)
+
+    chains = get_chain_seq(pose)
+    p = f.split('/')[-1].split('.')[0] #get the name of the file
+
+    #print(ii,len(pdbs),f)
+    out_fasta = []
+    #go thru all protein chains
+    nc = pose.num_chains();
+    num_res = 0;
+
+
+    ca_ = []
+    cb_ = []
+    f_ = []
+    ref_ = []
+    beta_ = []
+
+    for c in range(1,nc+1):
+
+        #only protein chains allowed
+        if pose.residue(pose.chain_begin(c)).is_protein() == False:
+            continue;
+
+
+
+        coor, label = get_protchainXYZ(pose,c)
+        cb, ca, frame, ref_pdb, b = get_chain_coor(pose,c)
+        beta_.append(b)
+
+        if len(cb) == 0:
+            continue;
+
+        seq = pose.chain_sequence(c)
+        n = p + "_" + str(c)
+        out_fasta.append([n,seq])
+
+
+
+        #output the coor file
+        #np.savez(output_dir + n + ".npz",ca=ca,cb=cb,frame=frame,ref=ref_pdb)
+        ca_.append(ca)
+        cb_.append(cb)
+        f_.append(frame)
+        ref_.append(ref_pdb)
+
+
+
+    return out_fasta, ca_,cb_,f_,ref_, beta_
+
+
+def esm_preprocess(fa,model,alphabet,batch_converter,output_dir, high_pl = False):
 
     """
     function preprocess a series of sequences with ESM
@@ -226,6 +293,8 @@ def esm_preprocess(fa,model,alphabet,batch_converter,output_dir):
     Returns:
         void
     """
+
+    y = []
 
     for ii in range(len(fa)):
         #print(ii,fa[ii])
@@ -242,13 +311,16 @@ def esm_preprocess(fa,model,alphabet,batch_converter,output_dir):
         for i, tokens_len in enumerate(batch_lens):
             seq_rep.append(token_representations[i, 1 : tokens_len - 1])
 
-        #output to file
-        name = fa[ii][0]
-        np.save(output_dir + name + "_esm.npz",seq_rep[0].numpy())
+        y.append( seq_rep[0].numpy() )
 
-    return;
+        if not high_pl:
+            #output to file
+            name = fa[ii][0]
+            np.save(output_dir + name + "_esm.npz",seq_rep[0].numpy())
 
-if __name__ == '__main__':
+    return y;
+
+def run_preprocess(high_plddt=False,plddt_cut=70):
 
     #load ESM Model
     model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
@@ -272,38 +344,84 @@ if __name__ == '__main__':
     f.close()
 
     f = open(output_dir + 'files_done.txt','a+')
-    fasta = open(output_dir + 'fasta.fa','a+')
-
-    print('preprocessing...')
-
-    for i in tqdm(range(len(ls))):
-        ii = ls[i] 
-
-        if ('.pdb' in ii):
-            p = ii.split('/')[-1].split('.')[0] #get the name of the file
-
-            #only do new ones
-            if p in done:
-                continue;
-            done.append(p)
-            f.write(p + '\n')
-            print(p)
-            
-            try:
-                fa, beta = rosetta_preprocess(input_dir + ii, output_dir)
-                esm_preprocess(fa,model,alphabet,batch_converter,output_dir)
 
 
-                for i in range(len(fa)):
-                    fasta.write('>' + fa[i][0] + '|' + str(beta[i]) + '\n' + fa[i][1] + '\n')
+    print('\npreprocessing...')
 
-            
-            except:
-                print("unable: ",ii)
+    if high_plddt:
 
+        for i in tqdm(range(len(ls))):
+            ii = ls[i]
+
+            if ('.pdb' in ii):
+                p = ii.split('/')[-1].split('.')[0] #get the name of the file
+                print(p)
+
+                #try:
+                if True:
+                    fa, ca_,cb_,f_,ref_, beta_ = rosetta_highPL_preprocess(input_dir + ii, output_dir)
+                    es_ = esm_preprocess(fa,model,alphabet,batch_converter,output_dir, high_plddt)
+
+                    for kk in range(len(fa)):
+
+                        ca,cb,fi,ref,es = [],[],[],[],[]
+                        #print(fa[kk][1])
+                        for jj in range(len(fa[kk][1])):
+                            #print('\t',fa[kk][1][jj])
+
+                            #only output the ones above plddt cutoff
+                            if beta_[kk][jj] > plddt_cut:
+                                ca.append(ca_[kk][jj])
+                                cb.append(cb_[kk][jj])
+                                fi.append(f_[kk][jj])
+                                ref.append(ref_[kk][jj])
+                                es.append(es_[kk][jj])
+
+                        n = p + "_" + str(kk)
+                        #print(len(fa[kk][1]),len(ca),len(cb),len(es))
+
+                        np.savez(output_dir + n + "_highPL.npz",ca=np.array(ca),cb=np.array(cb),frame=np.array(fi),ref=np.array(ref))
+                        np.save(output_dir + n + "_highPL_esm.npz.npy",es)
+
+
+                    #for i in range(len(fa)):
+                    #    fasta.write('>' + fa[i][0] + '|' + str(beta[i]) + '\n' + fa[i][1] + '\n')
+
+
+                #except:
+                #    print("unable: ",ii)
+                #break
+
+    else:
+        fasta = open(output_dir + 'fasta.fa','a+')
+        for i in tqdm(range(len(ls))):
+            ii = ls[i]
+
+            if ('.pdb' in ii):
+                p = ii.split('/')[-1].split('.')[0] #get the name of the file
+
+                #only do new ones
+                if p in done:
+                    continue;
+                done.append(p)
+                f.write(p + '\n')
+                print(p)
+
+                try:
+                    fa, beta = rosetta_preprocess(input_dir + ii, output_dir)
+                    _ = esm_preprocess(fa,model,alphabet,batch_converter,output_dir)
+
+
+                    for i in range(len(fa)):
+                        fasta.write('>' + fa[i][0] + '|' + str(beta[i]) + '\n' + fa[i][1] + '\n')
+
+
+                except:
+                    print("unable: ",ii)
+        fasta.close()
 
     f.close();
-    fasta.close()
+
 
     print('making CSVs for file input')
 
@@ -329,10 +447,136 @@ if __name__ == '__main__':
         if 'DS_Store' in p:
             continue;
         #just double down
-    
+
+        #remove all high_plddt when in basic mode
+        if not high_plddt:
+            if "highPL" in p:
+                continue;
+        #remove all non-high_plddt if in high mode
+        else:
+            if "highPL" not in p:
+                continue;
+
         name = p.split('.')[0];
         short_name = name[:name.rfind('_')]
-        
+
+        if short_name in done:
+            continue;
+        done.append(short_name)
+
+
+        chains = []
+        for ii in ls:
+            #print(ii)
+            if 'esm' in ii:
+                continue;
+            #remove all high_plddt when in basic mode
+            if not high_plddt:
+                if "highPL" in ii:
+                    continue;
+            #remove all non-high_plddt if in high mode
+            else:
+                if "highPL" not in ii:
+                    continue;
+
+            if short_name in ii:
+                n = ii.split('.')[0];
+                c = n[n.rfind('_'):];
+                chains.append(c)
+
+                print(n,c)
+
+        #print(chains)
+
+        cl += name + '|' + name + '\n'
+
+        #out += name + ',' + name + ',' + output_dir + name + '.npz,'
+        #out += output_dir + name + '_esm.npz.npy,,,\n'
+
+        out += name + ',' + name + ','
+        for jj in range(len(chains)):
+            out += output_dir + short_name + chains[jj] + '.npz'
+            if jj + 1 == len(chains):
+                continue;
+            out += '|'
+        out += ','
+        for jj in range(len(chains)):
+            out += output_dir + short_name + chains[jj] + '_esm.npz.npy'
+            if jj + 1 == len(chains):
+                continue;
+            out += '|'
+        out += ','
+
+        out += ',,\n'
+
+    output_file = output_dir + 'dataset'
+    f = open(output_file + "_pdb.csv",'w+')
+    f.write(out)
+    f.close()
+
+    f = open(output_file + "_clust.csv",'w+')
+    f.write(cl)
+    f.close();
+
+    print('Outputeed preprocessed files to: ', output_file + "_pdb  and " + output_file + "_clust .csv")
+
+def preprocess_single(file):
+    #load ESM Model
+    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+    batch_converter = alphabet.get_batch_converter()
+    model.eval()
+
+    fasta = open(output_dir + 'single_fasta.fa','a+')
+
+    print('preprocessing...')
+
+
+
+    p = file.split('/')[-1].split('.')[0] #get the name of the file
+    s = p;
+
+    print('file:',file,'\n',p)
+    fa, beta = rosetta_preprocess(file, output_dir)
+    esm_preprocess(fa,model,alphabet,batch_converter,output_dir)
+
+    for i in range(len(fa)):
+        fasta.write('>' + fa[i][0] + '|' + str(beta[i]) + '\n' + fa[i][1] + '\n')
+
+
+
+    fasta.close()
+
+    print('making CSVs for file input')
+
+    #only ouptut files that haven't been made yet
+    ls = os.listdir(output_dir)
+    #print(ls)
+
+    #np.savez(output_dir + n + ".npz",ca=ca,cb=cb,frame=frame,ref=ref_pdb)
+    #np.save(output_dir + name + "_esm.npz",seq_rep[0].numpy())
+
+    #out = "Cluster,PDB,coor_files,esm_files,AF2_files,carb,sm\n"
+    out = ''
+
+    cl = 'CLUST,PDB1|PDB2\n'
+
+    done = [];
+    for p in ls:
+        if s not in p:
+            continue;
+
+        #only grab npz
+        if '.npz' not in p:
+            continue;
+        if 'esm' in p:
+            continue;
+        if 'DS_Store' in p:
+            continue;
+        #just double down
+
+        name = p.split('.')[0];
+        short_name = name[:name.rfind('_')]
+
         if short_name in done:
             continue;
         done.append(short_name)
@@ -371,7 +615,7 @@ if __name__ == '__main__':
 
         out += ',,\n'
 
-    output_file = output_dir + 'dataset'
+    output_file = output_dir + 'dataset_single'
     f = open(output_file + "_pdb.csv",'w+')
     f.write(out)
     f.close()
@@ -380,5 +624,8 @@ if __name__ == '__main__':
     f.write(cl)
     f.close();
 
-    print('outputted to: ', output_file + "_pdb  and " + output_file + "_clust .csv")
+    print('Outputted preprocessed files to: ', output_file + "_pdb  and " + output_file + "_clust .csv")
 
+if __name__ == '__main__':
+    run_preprocess()
+    #return;

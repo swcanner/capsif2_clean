@@ -9,26 +9,12 @@ import numpy as np
 import os
 from scipy.spatial import distance_matrix as dm
 from scipy.spatial.transform import Rotation as R
-#from torchsummary import summary
 
-carb_dict = {
-    'abequose':0,
-    'arabinose':1,
-    'fucose':2,
-    'galactosamine':3,
-    'galactose':4,
-    'galacturonic acid':5,
-    'glucosamine':6,
-    'glucose':7,
-    'glucuronic acid':8,
-    'mannosamine':9,
-    'mannose':10,
-    'neuraminic acid':11,
-    'quinovose':12,
-    'rhamnose':13,
-    'ribose':14,
-    'xylose':15
-}
+import math
+import py3Dmol
+from Bio.PDB import *
+from colorama import Fore, Style
+#from torchsummary import summary
 
 class CSV_Dataset(Dataset):
     def __init__(self, cluster_file,  pdb_file, root_dir, nn=[6,12,18,24], train=False,
@@ -116,7 +102,7 @@ class CSV_Dataset(Dataset):
             #print(r)
             #r = [0]
             pdb_name = pdbs[r[0]]
-            
+
 
             print(clust, pdb_name)
             try:
@@ -276,7 +262,6 @@ class CSV_Dataset(Dataset):
         label = [];
 
         for ii in l:
-            #print(self.root_dir + ii)
             curr = np.load(self.root_dir + ii)
             ca_c = curr['ca']
             cb_c = curr['cb']
@@ -325,6 +310,7 @@ class CSV_Dataset(Dataset):
         ca = np.array(ca)
         cb = np.array(cb)
         frame = np.array(frame)
+
         try:
             label = np.stack(label)
         except:
@@ -362,13 +348,13 @@ class CSV_Dataset(Dataset):
             #for k in curr.files:
             #    print(k)
             c_ref = curr['ref']
-            
+
 
             for jj in range(len(c_ref)):
-                
+
                 ref.append(c_ref[jj])
-                
-        
+
+
         return ref
 
 
@@ -645,6 +631,151 @@ def print_metrics(epoch,step_loss,v_loss,v_pred,v_true,cutoff=0.5):
         o += str(dice_res_met[ii]) + " "
     print(o)
     return
+
+### Notebook prediction utils ###
+#stolen from https://github.com/ProteinDesignLab/protein_seq_des/blob/master/seq_des/util/data.py
+def download_pdb(pdb, data_dir):
+    """Function to download pdb -- either biological assembly or if that
+    is not available/specified -- download default pdb structure
+    Uses biological assembly as default, otherwise gets default pdb.
+
+    Args:
+        pdb (str): pdb ID.
+        data_dir (str): path to pdb directory
+    Returns:
+        f (str): path to downloaded pdb
+    """
+    f = data_dir + "/" + pdb + ".pdb"
+    print("Running")
+    if not os.path.isfile(f):
+        try:
+            print("a")
+            os.system("wget -O {}.gz https://files.rcsb.org/download/{}.pdb1.gz".format(f, pdb.upper()))
+            os.system("gunzip {}.gz".format(f))
+        except:
+            print('b')
+            f = data_dir + "/" + pdb + ".pdb"
+            if not os.path.isfile(f):
+                os.system("wget -O {} https://files.rcsb.org/download/{}.pdb".format(f, pdb.upper()))
+    else:
+        print('c')
+        f = data_dir + "/" + pdb + ".pdb"
+    if not os.path.isfile(f):
+        os.system("wget -O {} https://files.rcsb.org/download/{}.pdb".format(f, pdb.upper()))
+    return f
+
+
+def visualize(pdb_file,r="a.b",width=600,height=500,colors=['lime','gray']):
+    """
+    Arguments:
+        pdb_file (string): Path to pdb file to be shown
+        r (string): residues predicted, (organized as NUM.CHAIN)
+        color (array): colors for [protein, predicted_res]
+    Returns:
+        py3Dmol session with viewing the residues
+    """
+
+
+    with open(pdb_file) as ifile:
+        system = "".join([x for x in ifile])
+
+    view = py3Dmol.view(width=width, height=height)
+    view.addModelsAsFrames(system)
+
+    #print(r)
+    if ("," in r):
+        r = r.split(",")
+    else:
+        r = [r]
+
+    i = 0
+    for line in system.split("\n"):
+        split = line.split()
+        if len(split) == 0 or (split[0] != "ATOM" and split[0] != "HETATM"):
+            continue
+        if split[3] == "TIP3" or split[3] == "HOH":
+            continue
+
+        my_boi = split[5] + "." + split[4]
+        idx = int(split[1])
+
+        #show sidechains as sticks
+        if (my_boi in r) and (split[2] != "N" and split[2] != "O" and split[2] != "C" and split[2] != "CA"):
+            view.setStyle({'model': -1, 'serial': i+1}, {"stick": {'color': colors[0]}} )
+        #color predicted backbone
+        elif (my_boi in r):
+            view.setStyle({'model': -1, 'serial': i+1}, {"cartoon": {'color': colors[0]}} )
+        #color not-predicted backbone
+        else:
+            view.setStyle({'model': -1, 'serial': i+1}, {"cartoon": {'color': colors[1]}})
+
+        #show the glycan in purple
+
+        i += 1
+    view.zoomTo()
+    view.show()
+
+def pred_res_to_str(pred):
+    """
+    Returns the canonical residue.chain string for use of notebook functions
+    Arguments:
+        pred (arr): residues predicted by cap2
+    returns:
+        txt (str): residues predicted by cap2 in a single string
+    """
+    txt = ''
+    for jj in range(len(pred)):
+        markymark = pred[jj][0].split(' ')
+        txt += markymark[0] + '.' + markymark[1] + ','
+
+    return txt
+
+def output_structure_bfactor(file,res,out_file):
+    """
+    Arguments:
+        file (string): Path to pdb file to be shown
+        res (string): residues predicted, (organized as NUM.CHAIN)
+        out_file (string): output pdb file with capsif2 labeled residues
+    Returns:
+        py3Dmol session with viewing the residues
+    """
+
+    if (len(res) < 1):
+        res = '-1.A'
+    res = res.split(',')
+
+    #Create a parser adn read the structures
+    parser = PDBParser()
+    data = parser.get_structure('CAPS',file)
+
+    #go thru all chains and residues and atoms
+    models = data.get_models()
+    models = list(models)
+    for m in range(len(models)):
+        chains = list(models[m].get_chains())
+        for c in range(len(chains)):
+            residues = list(chains[c].get_residues())
+            for r in range(len(residues)):
+                #check if its a binding residue
+                temp = 1.00
+                #its a predicted residue -> BFactor = 99.99
+                my_res = str(residues[r].id[1]).strip() + "." + str(chains[c].id).strip()
+                if my_res in res:
+                    temp = 99.99
+
+                atoms = list(residues[r].get_atoms())
+                for a in range(len(atoms)):
+                    atoms[a].set_bfactor(temp)
+                    #print(chains[c].id,residues[r].id[1],atoms[a].name)
+    #output the file
+    io = PDBIO()
+    io.set_structure(data)
+    io.save(out_file)
+
+    return;
+
+
+
 
 if __name__ == "__main__":
     print("main")

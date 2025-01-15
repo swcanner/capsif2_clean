@@ -22,6 +22,7 @@ TEST_CLUST = './pre_pdb/dataset_clust.csv'
 #TEST_PDB = '../dataset/final0_train_pdb.csv'
 #TEST_CLUST = './test_datasets/final0_test_cluster_prune.csv'
 
+"""
 
 BATCH_SIZE = 1;
 FAKE_BATCH_SIZE = 1;
@@ -46,9 +47,9 @@ DEVICE = 'cpu'
 if torch.cuda.is_available():
     DEVICE = 'cuda'
     NUM_WORKERS = 8;
-print("Using: " + DEVICE)
+#print("Using: " + DEVICE)
 DEVICE = torch.device(DEVICE)
-print(DEVICE)
+#print(DEVICE)
 
 #os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -69,12 +70,12 @@ optimizer = optim.Adam(model.parameters(), lr=1e-5)
 scaler = torch.cuda.amp.GradScaler()
 torch.autograd.set_detect_anomaly(True)
 model.train()
-print("Model loaded")
+#print("Model loaded")
 #my_model_name = model.get_string_name() + "_knn" + str(KNN[0]) #+ '_coef_' + str(MY_COEF[0][0]) + "-" + str(MY_LOSS_EPOCHS) + "_all"
 
 my_model_name = 'picap'
 
-print(my_model_name)
+#print(my_model_name)
 
 if DEVICE == 'cuda':
     checkpoint = torch.load("./models_DL/model-" + my_model_name + ".pt")
@@ -82,11 +83,11 @@ else:
     checkpoint = torch.load("./models_DL/model-" + my_model_name + ".pt",
         map_location=torch.device('cpu') )
 model.load_state_dict(checkpoint['model_state_dict'])
-print(checkpoint['info'])
+#print(checkpoint['info'])
 
 model.eval()
-print("Model loaded")
-
+#print("Model loaded")
+#"""
 
 #get the outputs for this guy to compute accuracy and everything
 def model_test_prot_env(loader, model, DEVICE='cpu'):
@@ -132,7 +133,7 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
             #print("PREDRES SIZE:",pred_res.size())
             #print(activation)
 
-            
+
             prot_pred.append(pred_prot.detach().cpu().numpy())
             #prot_label.append(label_prot.detach().cpu().numpy())
             names.append(name)
@@ -154,7 +155,7 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
 train_loss = [];
 val_loss = [];
 epochs = [];
-print("EPOCH,TRAIN,VAL,VAL_CLUST")
+#print("EPOCH,TRAIN,VAL,VAL_CLUST")
 
 if __name__ == "__main__":
 
@@ -172,7 +173,7 @@ if __name__ == "__main__":
     for ii in range(len(names)):
         #print(names[ii][0])
         #print(prot_pred[ii])
-        out += str(names[ii][0]) + ',' + str(prot_pred[ii]) + '\n'
+        out += str(names[ii][0]) + ',' + str(round(prot_pred[ii],4)) + '\n'
     f = open(file,'w+')
     f.write(out)
     f.close()
@@ -181,4 +182,4 @@ if __name__ == "__main__":
 
     #print(epochs,train_loss,val_loss)
 
-print('FIN');
+#print('FIN');

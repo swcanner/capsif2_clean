@@ -21,7 +21,7 @@ TEST_CLUST = './pre_pdb/dataset_clust.csv'
 #TEST_CLUST = '../dataset/final0_train_cluster_prune.csv'
 #TEST_PDB = '../dataset/final0_train_pdb.csv'
 #TEST_CLUST = './test_datasets/final0_test_cluster_prune.csv'
-
+"""
 
 BATCH_SIZE = 1;
 FAKE_BATCH_SIZE = 1;
@@ -48,9 +48,9 @@ DEVICE = 'cpu'
 if torch.cuda.is_available():
     DEVICE = 'cuda'
     NUM_WORKERS = 8;
-print("Using: " + DEVICE)
+#print("Using: " + DEVICE)
 DEVICE = torch.device(DEVICE)
-print(DEVICE)
+#print(DEVICE)
 
 #os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -70,7 +70,7 @@ print("Model loaded")
 
 my_model_name = 'capsif2'
 
-print(my_model_name)
+#print(my_model_name)
 
 if DEVICE == 'cuda':
     checkpoint = torch.load("./models_DL/model-" + my_model_name + ".pt")
@@ -78,16 +78,16 @@ else:
     checkpoint = torch.load("./models_DL/model-" + my_model_name + ".pt",
         map_location=torch.device('cpu') )
 model.load_state_dict(checkpoint['model_state_dict'])
-print(checkpoint['info'])
+#print(checkpoint['info'])
 
 model.eval()
-print("Model loaded")
+#print("Model loaded")
 
+#"""
 
-
-
+CUTOFF = 0.001
 #get the outputs for this guy to compute accuracy and everything
-def model_test_prot_env(loader, model, DEVICE='cpu'):
+def model_test_res_env(loader, model, DEVICE='cpu',CUTOFF = 0.001):
     loop = tqdm(loader)
     #print("HIIIIIIIII")
     pred_res, res_label = [], [];
@@ -128,7 +128,7 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
             #print("PREDRES SIZE:",pred_res.size())
             #print(activation)
 
-            
+
             pred_res.append(pred.detach().cpu().numpy())
             c_p = pred.detach().cpu().numpy().reshape(-1)
             #print(c_p)
@@ -139,7 +139,7 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
                 #print(c_p[kk])
                 if c_p[kk] > CUTOFF:
                     c_res.append(ref_pdb[kk])
-                
+
             res_label.append( c_res )
             #prot_label.append(label_prot.detach().cpu().numpy())
             names.append(name)
@@ -153,7 +153,7 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
             #print(name,pred_prot.item())
             #if n_stuff > 5:
             #    break
-            
+
 
     return pred_res, names, res_label
 
@@ -162,12 +162,12 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
 train_loss = [];
 val_loss = [];
 epochs = [];
-print("EPOCH,TRAIN,VAL,VAL_CLUST")
+#print("EPOCH,TRAIN,VAL,VAL_CLUST")
 
 if __name__ == "__main__":
 
     model.eval()
-    pred_res, names, res_label  = model_test_prot_env(test_loader, model, DEVICE=DEVICE)
+    pred_res, names, res_label  = model_test_res_env(test_loader, model, DEVICE=DEVICE)
 
     #pred_res = np.array(pred_res)
     #res_label = np.array(res_label)
@@ -190,4 +190,4 @@ if __name__ == "__main__":
     f.close()
 
 
-print('FIN');
+#print('FIN');
