@@ -93,7 +93,7 @@ PiCAP and CAPSIF2 help:
                     """)
                     exit()
 
-    return RUN_PICAP, RUN_CAP, HIGH_PL, SINGLE
+    return RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT, SINGLE
 
 
 
@@ -319,7 +319,7 @@ def run_picap(TEST_PDB,TEST_CLUST):
         if OUTPUT_INT_TO_CMD:
             print(names[ii][0],',', str(prot_pred[ii]))
         #print(prot_pred[ii])
-        out += str(names[ii][0]) + '\t' + str(prot_pred[ii]) + '\n'
+        out += str(names[ii][0]) + '\t' + str(round(prot_pred[ii],4)) + '\n'
     if not os.path.exists(file):
         out = 'PDB_NAME\tpred\n'
     f = open(file,'a+')
@@ -376,7 +376,7 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
             for jj in range(len(names_cap)):
                 if names_pi[ii][0] == names_cap[jj][0]:
                     txt += names_pi[ii][0] + '\t'
-                    txt += str(pi_pred[ii]) + '\t'
+                    txt += str(round(pi_pred[ii],4)) + '\t'
                     for kk in range(len(cap_pred[jj])):
                         txt += cap_pred[jj][kk][0] + ','
                     txt += '\n'
@@ -397,7 +397,7 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
     #return;
 
 if __name__ == "__main__":
-    RUN_PICAP, RUN_CAP, HIGH_PL, SINGLE = manage_flags(sys.argv)
+    RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT,  SINGLE = manage_flags(sys.argv)
 
     run_preprocess(HIGH_PL,PL_CUT)
     print("Preprocessing complete\n\n")
