@@ -15,7 +15,7 @@ The weights of each model are stored on our remote server [`data.graylab.jhu.edu
 
 Download `model-picap.pt` and `model-capsif2.pt` to `capsif2_clean/models_DL/`
 
-# How to run #
+# How to run: Command Line #
 Put all PDB files into the `input_pdb/` directory
 ```
 python run_both.py
@@ -40,6 +40,16 @@ the predictions will then be outputted to `output_data/predictions_prot.tsv` and
 If running both, then the data will be outputted to `output_data/all_predictions.tsv`
 
 All predictions for CAPSIF2 are also outputted individually as PDB files in the `output_data/` directory.
+
+
+# How to run: Notebook #
+Put all PDB files into the `input_pdb/` directory
+
+#### Single structure prediction ####
+Load the `sample_notebook.ipynb` to run a single structure through (no high_plddt option provided), which allows quick analysis and viewing of a single structure.
+
+#### Multi structure prediction ####
+Load the `notebook_predict_directory.ipynb` and run the script to predict for all structures in the `input_pdb/` directory.
 
 
 ## Supplemental data ##
