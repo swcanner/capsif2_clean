@@ -2,12 +2,6 @@
 
 ![PiCAP](./picap_visual_abstract.jpg)
 
-This is the first iteration and very rough. Will add more later
-
-Libraries needed:
-Conda environment with `pyrosetta, pytorch, tqdm, numpy, pandas, esm,` and more - will make a yml soon...
-
-
 ## Quick Setup Guide ##
 ```
 mkdir pre_pdb
