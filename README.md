@@ -41,3 +41,9 @@ the predictions will then be outputted to `output_data/predictions_prot.tsv` and
 If running both, then the data will be outputted to `output_data/all_predictions.tsv`
 
 All predictions for CAPSIF2 are also outputted individually as PDB files in the `output_data/` directory.
+
+
+## Supplemental data ##
+
+We include the NoCAP and DR datasets in the `datasets/` directory with a list of PDBs. All non-RCSB retrievable structures (e.g. designed non-binders and ProGen lysozymes) are at the remote server [`data.graylab.jhu.edu/picap/`](https://data.graylab.jhu.edu/picap/).
+
