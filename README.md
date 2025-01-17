@@ -8,41 +8,42 @@ Libraries needed:
 Conda environment with `pyrosetta, pytorch, tqdm, numpy, pandas, esm,` and more - will make a yml soon...
 
 
-### Quick Setup Guide - Proceed with caution, untested... ###
+## Quick Setup Guide ##
 ```
-We suggest using a conda environment for the installation.
-Steps:
->> conda create -n picap
->> conda install python=3.9 -c conda-forge
->> conda install pytorch torchvision cudatoolkit=11.5 -c pytorch -c nvidia -c conda-forge
->> conda install biopython pandas colorama scikit-learn matplotlib tqdm py3dmol -c conda-forge
->> pip install esm
-To install pyrosetta, create a ~/.conda (.condarc) file with the following content:
---------------------------------------------------------
-channels:
-- https://USERNAME:PASSWORD@conda.rosettacommons.org
-- defaults
---------------------------------------------------------
->> conda install pyrosetta
+mkdir pre_pdb
+mkdir output_data
+mkdir models_DL
+conda env create -f picap.yml
+conda activate picap
 ```
 
-The weights of each model are stored on our remote server [`data.graylab.jhu.edu/picap/`](data.graylab.jhu.edu/picap/)
+The weights of each model are stored on our remote server [`data.graylab.jhu.edu/picap/`](https://data.graylab.jhu.edu/picap/)
 
-Download `picap.pt` and `capsif2.pt` to `capsif2_clean/models_DL/`
+Download `model-picap.pt` and `model-capsif2.pt` to `capsif2_clean/models_DL/`
 
 
-## How to run ##
+# How to run #
 Put all PDB files into the `input_pdb/` directory
 ```
->> python preprocess.py
+python run_both.py
 ```
-#### If using PiCAP: ####
+#### If using only PiCAP: ####
 ```
->> python predict_prot.py
+python run_both.py --picap_only
 ```
-#### If using CAPSIF2: ####
+#### If using only CAPSIF2: ####
 ```
->> python predict_res.py
+python run_both.py --capsif2_only
 ```
 
-the predictions will then be outputted to `output_data/predictions_prot.csv` and `output_data/predictions_res.csv` for PiCAP and CAPSIF2, respectively
+#### If using computational structures with a pLDDT cutoff ####
+```
+python run_both.py --high_plddt --plddt_cutoff 70
+```
+`plddt_cutoff` can be changed to any value, the publication uses 70 as the cutoff for AF2 structures.
+
+the predictions will then be outputted to `output_data/predictions_prot.tsv` and `output_data/predictions_res.tsv` for PiCAP and CAPSIF2, respectively.
+
+If running both, then the data will be outputted to `output_data/all_predictions.tsv`
+
+All predictions for CAPSIF2 are also outputted individually as PDB files in the `output_data/` directory.
