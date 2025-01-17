@@ -15,7 +15,6 @@ The weights of each model are stored on our remote server [`data.graylab.jhu.edu
 
 Download `model-picap.pt` and `model-capsif2.pt` to `capsif2_clean/models_DL/`
 
-https://data.graylab.jhu.edu/picap_capsif2/
 # How to run #
 Put all PDB files into the `input_pdb/` directory
 ```
