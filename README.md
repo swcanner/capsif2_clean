@@ -11,11 +11,11 @@ conda env create -f picap.yml
 conda activate picap
 ```
 
-The weights of each model are stored on our remote server [`data.graylab.jhu.edu/picap/`](https://data.graylab.jhu.edu/picap/)
+The weights of each model are stored on our remote server [`data.graylab.jhu.edu/picap_capsif2/`](https://data.graylab.jhu.edu/picap_capsif2/)
 
 Download `model-picap.pt` and `model-capsif2.pt` to `capsif2_clean/models_DL/`
 
-
+https://data.graylab.jhu.edu/picap_capsif2/
 # How to run #
 Put all PDB files into the `input_pdb/` directory
 ```
@@ -45,5 +45,5 @@ All predictions for CAPSIF2 are also outputted individually as PDB files in the 
 
 ## Supplemental data ##
 
-We include the NoCAP and DR datasets in the `datasets/` directory with a list of PDBs. All non-RCSB retrievable structures (e.g. designed non-binders and ProGen lysozymes) are at the remote server [`data.graylab.jhu.edu/picap/`](https://data.graylab.jhu.edu/picap/).
+We include the NoCAP and DR datasets in the `datasets/` directory with a list of PDBs. All non-RCSB retrievable structures (e.g. designed non-binders and ProGen lysozymes) are at the remote server [`data.graylab.jhu.edu/picap_capsif2/`](https://data.graylab.jhu.edu/picap_capsif2/).
 
