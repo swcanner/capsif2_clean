@@ -11,7 +11,7 @@ conda env create -f picap.yml
 conda activate picap
 ```
 
-###To get the model weights###
+### To get the model weights ###
 ```
 cd models_DL
 wget https://data.graylab.jhu.edu/picap_capsif2/model-picap.pt
