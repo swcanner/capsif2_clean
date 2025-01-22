@@ -56,10 +56,10 @@ All predictions for CAPSIF2 are also outputted individually as PDB files in the 
 # How to run: Notebook #
 Put all PDB files into the `input_pdb/` directory
 
-#### Single structure prediction ####
+### Single structure prediction ###
 Load the `sample_notebook.ipynb` to run a single structure through (no high_plddt option provided), which allows quick analysis and viewing of a single structure.
 
-#### Multi structure prediction ####
+### Multi structure prediction ###
 Load the `notebook_predict_directory.ipynb` and run the script to predict for all structures in the `input_pdb/` directory.
 
 
