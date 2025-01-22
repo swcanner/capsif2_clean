@@ -47,6 +47,20 @@ def str_to_bool(a):
     return b
 
 def manage_flags(flags):
+
+    """
+    function manages all input flags
+
+    Args:
+        flags (str) : input flags for the file
+    Returns:
+        RUN_PICAP (bool) : run picap
+        RUN_CAP (bool) : run capsif2
+        HIGH_PL (bool) : run only on high-res residues
+        PL_CUT (str) : what is the cutoff for resolution
+        SINGLE (bool) : only run on single structure (used only for notebooks)
+    """
+
     #Get all flags all organized
     n = len(flags)
 
@@ -93,7 +107,8 @@ PiCAP and CAPSIF2 help:
                     """)
                     exit()
 
-    print("Running with the following flags: ")
+
+    print("\n\nRunning with the following flags: ")
     print("Run PiCAP : ",RUN_PICAP)
     print("Run CAPSIF2: ",RUN_CAP)
     print("Run High pLDDT only: ",HIGH_PL)
@@ -105,18 +120,12 @@ PiCAP and CAPSIF2 help:
 
 
 from preprocess import *
-from predict_res import *
-from predict_prot import *
 
-
-
-#init(" ".join(options.split('\n')))
 import os
 import numpy as np
 import pandas as pd
 from utils import *
 from egnn.egnn import *
-from utils_model import *
 import matplotlib.pyplot as plt
 from torchvision.models.feature_extraction import create_feature_extractor
 
@@ -160,14 +169,9 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
     BATCH_SIZE = 1;
     NUM_WORKERS = 0;
 
-    #Hyper parameters!
-    #LOSS_FN = dice_ent_loss
-    #loss_str = "_loss-dbce"
-    LOSS_FN = nn.BCELoss()
     KNN = [16,16,16,16]
     N_LAYERS = [3,3,3,3]
     HIDDEN_NF = 128
-    loss_str = ''
     CUTOFF = 0.001
 
     DEVICE = 'cpu'
@@ -176,8 +180,6 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
         NUM_WORKERS = 8;
     print("Using: " + DEVICE)
     DEVICE = torch.device(DEVICE)
-
-    #os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
     #Load Test Dataset
     test_loader = get_test_loader(TEST_CLUST,TEST_PDB,root_dir="./",train=0,
@@ -190,12 +192,8 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
     scaler = torch.cuda.amp.GradScaler()
     torch.autograd.set_detect_anomaly(True)
     model.train()
-    #print("Model loaded")
-    #my_model_name = model.get_string_name() + "_knn" + str(KNN[0]) #+ '_coef_' + str(MY_COEF[0][0]) + "-" + str(MY_LOSS_EPOCHS) + "_all"
 
     my_model_name = 'capsif2'
-
-    #print(my_model_name)
 
     if DEVICE == 'cuda':
         checkpoint = torch.load("./models_DL/model-" + my_model_name + ".pt")
@@ -235,9 +233,6 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
             #need to get full name of the input pdb
             ls = os.listdir('./input_pdb/')
             the_input_pdb_file = ''
-            #print(names[ii][0])
-            #print(names[ii][0].split('_'))
-            #print(ls)
             for jj in ls:
                 if names[ii][0].split('_')[0] in jj:
                     the_input_pdb_file = jj
@@ -274,8 +269,6 @@ def run_picap(TEST_PDB,TEST_CLUST):
     N_LAYERS = [3,3,3,3]
     HIDDEN_NF = 128
     ADAPOOL_SIZE = (150,HIDDEN_NF)
-    loss_str = ''
-    NUM = ''
 
     DEVICE = 'cpu'
     if torch.cuda.is_available():
@@ -318,14 +311,11 @@ def run_picap(TEST_PDB,TEST_CLUST):
     names = np.array(names)
 
     file = "./output_data/predictions_prot.tsv"
-    #out = 'PDB_NAME,pred\n'
     print('\n\t------PiCAP results-------')
     out = ''
-    #print(file)
     for ii in range(len(names)):
         if OUTPUT_INT_TO_CMD:
             print(names[ii][0],',', str(prot_pred[ii]))
-        #print(prot_pred[ii])
         out += str(names[ii][0]) + '\t' + str(round(prot_pred[ii],4)) + '\n'
     if not os.path.exists(file):
         out = 'PDB_NAME\tpred\n'
@@ -345,6 +335,9 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
         names_pi  (arr, string): all the input pdb names from picap
         cap_pred (2d arr, string): predicted residues of the associated pdbs
         pi_pred (arr, float): predicted probability of protein-carb binding
+
+    Note:
+        This function removes all intermediate files after running
     """
 
     TEST_PDB =   './pre_pdb/dataset_pdb.csv'

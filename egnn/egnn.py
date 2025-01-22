@@ -2,6 +2,7 @@ from torch import nn
 import torch
 import numpy as np
 
+#base E_GCL of EGNN paper
 class E_GCL(nn.Module):
     """
     E(n) Equivariant Convolutional Layer
@@ -111,7 +112,7 @@ class E_GCL(nn.Module):
 
         return h, coord, edge_attr
 
-
+#base EGNN of EGNN paper
 class EGNN(nn.Module):
     def __init__(self, in_node_nf, hidden_nf, out_node_nf, in_edge_nf=0, device='cpu', act_fn=nn.ReLU(), n_layers=4, residual=True, attention=False, normalize=True, tanh=False):
         '''
@@ -167,7 +168,6 @@ class PICAP(nn.Module):
             output_dim=1, adapool_size=(150,128),
             device='cpu', act_fn=nn.ReLU(), n_layers=[4,4,4,4],
             residual=True, attention=True, normalize=True, tanh=False):
-            #residual=True, attention=False, normalize=False, tanh=False):
         '''
 
         :param in_node_nf: Number of features for 'h' at the input
@@ -180,9 +180,8 @@ class PICAP(nn.Module):
         :param num_Fc_times: Number of times each FC layers goes thru post-graph data
         :param device: Device (e.g. 'cpu', 'cuda:0',...)
         :param act_fn: Non-linearity
-        :param n_layers_1: Number of layer for the EGNN in the shared track
-        :param n_layers_2_res: Number of layer for the EGNN in residue prediction
-        :param n_layers_2_prot: Number of layer for the EGNN in protein-level prediction
+        :param n_layers: Number of layer for the EGNN in the shared track
+        :param adapool_size: Size of the adaptive pool
         :param residual: Use residual connections, we recommend not changing this one
         :param attention: Whether using attention or not
         :param normalize: Normalizes the coordinates messages such that:
@@ -217,10 +216,7 @@ class PICAP(nn.Module):
 
         self.adapool_size = adapool_size
 
-        #self.graph_norm_in = nn.BatchNorm1d(in_node_nf)
         self.which_edges = [];
-
-        #Shared Track
 
         for i in range(len(self.n_layers)):
             for j in range(self.n_layers[i]):
@@ -240,7 +236,6 @@ class PICAP(nn.Module):
             nn.Conv2d(1, 4, 40, padding=2),
             nn.MaxPool2d(3),
             nn.LayerNorm(31),
-            #nn.LeakyReLU(inplace=True),
             nn.GELU(),
             nn.Dropout(0.1),
         )
@@ -249,11 +244,9 @@ class PICAP(nn.Module):
             nn.Conv2d(4, 16, 12, padding=2),
             nn.MaxPool2d(3),
             nn.LayerNorm(8),
-            #nn.LeakyReLU(inplace=True)
             nn.GELU(),
             nn.Dropout(0.1),
         )
-        #"""
 
         self.mlp_prot1 = nn.Sequential(
             nn.Linear(1280,out_node_nf),
@@ -276,115 +269,59 @@ class PICAP(nn.Module):
         self.norm_prot_flat = nn.LayerNorm(out_node_nf)
         self.mlp_prot_act = nn.Sigmoid()
 
-
-
         self.out_node_nf = out_node_nf
-
-
-
 
         self.to(self.device)
 
     def forward(self, h, x, edges, edge_attr,is_batch=False,n_res=100,n_edge=100):
-        #print(h.shape,edges[0][0].shape,x[0].shape)
+
         h = self.norm_in(h)
         h_prime = self.embedding_in0(h)
         h_0 = h_prime
         x_prime = x
-        #print(edges[0][0].shape)
-
-        ###################################################
-        #Shared Track
-        #print(len(self.which_edges) )
-        #print( np.shape(edges), np.shape(edges[:][0]) , edges[0][0])
-
-        #n_edges [ block type ] [batch index num]
 
         for i in range(0, len(self.graph_module)):
-            #print(i,h_prime.shape,torch.any(torch.isnan(h_prime)))
-            #print("S:",i,torch.min(h_prime), torch.max(h_prime), torch.mean(h_prime), torch.std(h_prime))
-            #print(h_prime)
-            #if torch.any(torch.isnan(h_prime)):
-            #    print("S1",i)
-                #return 0,0
-                #exit()
-            #print(len(n_edge),len(n_edge[0]))
-            #print(i,self.which_edges[i],n_edge[self.which_edges[i]][0])
             curr_edges = torch.LongTensor(edges[self.which_edges[i]]).to(self.device).squeeze()
             curr_edge_feat = torch.FloatTensor(edge_attr[self.which_edges[i]]).to(self.device).squeeze()
-            #print(curr_edges.shape,curr_edge_feat.shape)
-            #print(curr_edges)
-            #print(type(curr_edges),type(curr_edge_feat))
-            #print(h_prime.get_device(),x_prime.get_device(),curr_edges.get_device(),curr_edge_feat.get_device() )
+
             h_prime, x_prime, _ = self.graph_module[i](h_prime, curr_edges, x_prime, edge_attr=curr_edge_feat)
             h_prime = self.graph_norm[i](h_prime)
             h_prime = self.graph_drop[i](h_prime)
             h_prime = torch.nan_to_num(h_prime, nan=0.0)
 
         h_prot = h_0 + h_prime
-        #if torch.any(torch.isnan(h_prot)):
-        #    print("Res: Post-pred",h_prot)
-        #print('h0+', torch.any(torch.isnan(h_res)), h_res)
 
         h_prot = self.embedding_out(h_prot)
-
-        #if torch.any(torch.isnan(h_prot)):
-        #    print("Res: Post-emb",h_prot)
-        #print('emb_out', torch.any(torch.isnan(h_res)), h_res)
-
         h_prot = h_prot.unsqueeze(0)
         h_prot = torch.nan_to_num(h_prot, nan=0.0)
-        #h_prot = torch.sum(h_prot,dim = 1)
-        #print("in ada track1:",h_prot.size())
 
-        #"""
-        #print("Prot track1:",h_prot.size())
+
         h_prot = self.ada_pool(h_prot)
-        #print("h_ada:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         h_prot = torch.unsqueeze(h_prot,0)
 
-        #h_ada = torch.transpose(h_ada,0,2)
-        #print("h_ada:",h_prot.shape)
-        #print("Prot track2:",h_prot.size())
         h_prot = self.conv_prot1(h_prot)
         h_prot = torch.nan_to_num(h_prot, nan=0.0)
-        #print("h_conv1:",h_prot.shape)
-        #print("h_conv1:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         h_prot = self.conv_prot2(h_prot)
         h_prot = torch.nan_to_num(h_prot, nan=0.0)
-        #print("h_conv2:",h_prot.shape)
-        #print("h_conv2:",torch.torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
-        #print("Prot track3:",h_prot.size())
-        #print("h_conv:",h_ada.shape)
         h_prot = h_prot.flatten();
         h_prot = h_prot.unsqueeze(0)
 
-        #print("h_flat:",h_prot.shape)
-        #print("Prot track4:",h_prot.size())
         h_prot = self.mlp_prot1(h_prot )
         h_prot = torch.nan_to_num(h_prot, nan=0.0)
-        #if torch.any(torch.isnan(h_prot)):
-        #        print("Prot mlp_boi")
-        #print("h_mlp1:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
-        #print(self.mlp_prot1)
         h_prot = self.mlp_prot2( h_prot )
         h_prot = torch.nan_to_num(h_prot, nan=0.0)
-        #print("h_mlp2:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
         h_prot = self.mlp_prot3( h_prot )
         h_prot = torch.nan_to_num(h_prot, nan=0.0)
-        #print("h_mlp3:",torch.min(h_prot).item(), torch.max(h_prot).item(), torch.mean(h_prot).item(), torch.std(h_prot).item())
-        #"""
 
         h_prot = torch.sigmoid(h_prot)
 
         return h_prot
 
     def get_string_name(self):
-        name = "CAPSIF2_PROT_" + str(self.hidden_nf) + "_nlayer-" + str(self.n_layers[0])
+        name = "PICAP_" + str(self.hidden_nf) + "_nlayer-" + str(self.n_layers[0])
         name += "-" + str(self.n_layers[1])
 
         return name
-
 
 
 class CAPSIF2_RES2(nn.Module):
@@ -404,9 +341,7 @@ class CAPSIF2_RES2(nn.Module):
         :param num_Fc_times: Number of times each FC layers goes thru post-graph data
         :param device: Device (e.g. 'cpu', 'cuda:0',...)
         :param act_fn: Non-linearity
-        :param n_layers_1: Number of layer for the EGNN in the shared track
-        :param n_layers_2_res: Number of layer for the EGNN in residue prediction
-        :param n_layers_2_prot: Number of layer for the EGNN in protein-level prediction
+        :param n_layers: Number of layer for the EGNN in the shared track
         :param residual: Use residual connections, we recommend not changing this one
         :param attention: Whether using attention or not
         :param normalize: Normalizes the coordinates messages such that:
@@ -441,7 +376,6 @@ class CAPSIF2_RES2(nn.Module):
         self.graph_drop = nn.ModuleList()
         self.norm_res = nn.LayerNorm(output_dim)
 
-        #self.graph_norm_in = nn.BatchNorm1d(in_node_nf)
         self.which_edges = [];
 
         #Shared Track
@@ -462,60 +396,27 @@ class CAPSIF2_RES2(nn.Module):
         self.to(self.device)
 
     def forward(self, h, x, edges, edge_attr,is_batch=False,n_res=100,n_edge=100):
-        #print(h.shape,edges[0][0].shape,x[0].shape)
         h = self.norm_in(h)
         h_prime = self.embedding_in0(h)
         h_0 = h_prime
         x_prime = x
-        #print(edges[0][0].shape)
-
-        ###################################################
-        #Shared Track
-        #print(len(self.which_edges) )
-        #print( np.shape(edges), np.shape(edges[:][0]) , edges[0][0])
-
-        #n_edges [ block type ] [batch index num]
 
         for i in range(0, len(self.graph_module)):
-            #print(i,h_prime.shape,torch.any(torch.isnan(h_prime)))
-            #print("S:",i,torch.min(h_prime), torch.max(h_prime), torch.mean(h_prime), torch.std(h_prime))
-            #print(h_prime)
-            if torch.any(torch.isnan(h_prime)):
-                print("S1",i)
-                #return 0,0
-                #exit()
-            #print(len(n_edge),len(n_edge[0]))
-            #print(i,self.which_edges[i],n_edge[self.which_edges[i]][0])
             curr_edges = torch.LongTensor(edges[self.which_edges[i]]).to(self.device).squeeze()
             curr_edge_feat = torch.FloatTensor(edge_attr[self.which_edges[i]]).to(self.device).squeeze()
-            #print(curr_edges.shape,curr_edge_feat.shape)
-            #print(curr_edges)
-            #print(type(curr_edges),type(curr_edge_feat))
-            #print(h_prime.get_device(),x_prime.get_device(),curr_edges.get_device(),curr_edge_feat.get_device() )
+
             h_prime, x_prime, _ = self.graph_module[i](h_prime, curr_edges, x_prime, edge_attr=curr_edge_feat)
             h_prime = self.graph_norm[i](h_prime)
             h_prime = self.graph_drop[i](h_prime)
             h_prime = torch.nan_to_num(h_prime, nan=0.0)
 
         h_res = h_0 + h_prime
-        #if torch.any(torch.isnan(h_res)):
-        #    print("Res: Post-pred",h_res)
-        #print('h0+', torch.any(torch.isnan(h_res)), h_res)
         h_res = torch.nan_to_num(h_res, nan=0.0)
         h_res = self.embedding_out(h_res)
         h_res = torch.nan_to_num(h_res, nan=0.0)
 
-        #if torch.any(torch.isnan(h_res)):
-        #    print("Res: Post-emb",h_res)
-        #print('emb_out', torch.any(torch.isnan(h_res)), h_res)
-
         h_res = self.embedding_out2(h_res)
         h_res = torch.nan_to_num(h_res, nan=0.0)
-
-        #h_res = self.norm_res(h_res)
-        #if torch.any(torch.isnan(h_res)):
-        #    print("Res: Post-norm",h_res)
-        #print('norm', torch.any(torch.isnan(h_res) ), h_res)
         h_res = torch.sigmoid(h_res)
 
         return h_res
@@ -527,6 +428,7 @@ class CAPSIF2_RES2(nn.Module):
         return name
 
 
+## Functions of EGNN Paper - not touched ##
 
 def unsorted_segment_sum(data, segment_ids, num_segments):
     result_shape = (num_segments, data.size(1))

@@ -9,12 +9,10 @@ import numpy as np
 import os
 from scipy.spatial import distance_matrix as dm
 from scipy.spatial.transform import Rotation as R
-
 import math
 import py3Dmol
 from Bio.PDB import *
 from colorama import Fore, Style
-#from torchsummary import summary
 
 class CSV_Dataset(Dataset):
     def __init__(self, cluster_file,  pdb_file, root_dir, nn=[6,12,18,24], train=False,
@@ -484,21 +482,6 @@ class CSV_Dataset(Dataset):
         return edges, feats
 
 
-def get_loaders(train_file_cluster, train_file_pdb, test_file_cluster, test_file_pdb, root_dir="../",
-                batch_size=1, num_workers=0, train_cluster=True, val_cluster=False,
-                knn=[6,12,18,24], pin_memory=True, use_pad=False, pad_size=1750):
-
-    train_ds = CSV_Dataset( train_file_cluster,  train_file_pdb, root_dir=root_dir, train=1, use_clusters=train_cluster,nn=knn)
-    train_loader = DataLoader( train_ds, batch_size=batch_size, num_workers=num_workers,
-        pin_memory=pin_memory, shuffle=True )
-
-    val_ds = CSV_Dataset( test_file_cluster,  test_file_pdb, root_dir=root_dir, train=1, use_clusters=val_cluster,nn=knn, val=True)
-    val_loader = DataLoader( val_ds, batch_size=1, num_workers=num_workers,
-        pin_memory=pin_memory, shuffle=False )
-
-    return train_loader, val_loader
-
-
 def fix_edges(edges,feats,n_edges):
     """
     Arguments:
@@ -515,26 +498,40 @@ def fix_edges(edges,feats,n_edges):
 
     sz_block = np.shape(edges)
     sz_batch = np.shape(edges[0])
-    #print(sz_batch, sz_block, np.shape(n_edges))
+
     #Go thru each elem in batch
     for ii in range(sz_batch[0]):
-
         # go thru each block in batch
         new_edges.append([])
         new_feats.append([])
 
         #Go thru each block
         for jj in range(sz_block[0]):
-            #print(np.shape(edges[jj]), edges[jj][ii,:,:])
             new_edges[ii].append(edges[jj][ii,:,:n_edges[jj][ii]])
             new_feats[ii].append(feats[jj][ii,:n_edges[jj][ii]])
-    #print(np.shape(new_edges),np.shape(new_feats))
+
     return new_edges, new_feats
 
 
 def get_test_loader(test_file_cluster,  test_file_pdb, root_dir="../", train=0,
                 batch_size=1, num_workers=0, test_cluster=False,
                 knn=[6,12,18,24], pin_memory=True,return_pdb_ref=False):
+
+    """
+    Arguments:
+        test_file_cluster (str): cluster file of directories of the test files used
+        test_file_pdb (str): pdb file of directories of the test files used
+        root_dir (str): directory used as basis of root
+        train (int/bool): used when label is known for training
+        batch_size (int): num of entries in a batch (1)
+        num_workers (int): num threads
+        test_cluster (bool): run through all pdbs or just thru cluster by cluster
+        knn (int): KNN used for EGCLs with edges
+        pin_memory (bool) : pin_memory
+        return_pdb_ref (bool) : Return PDB numbering
+    Returns:
+        val loader (DataLoader): test dataloader
+    """
 
     val_ds = CSV_Dataset(  test_file_cluster,  test_file_pdb, root_dir=root_dir, train=1,
         use_clusters=test_cluster,nn=knn, val=True, return_name=True, return_pdb_ref=return_pdb_ref)
@@ -543,94 +540,111 @@ def get_test_loader(test_file_cluster,  test_file_pdb, root_dir="../", train=0,
 
     return val_loader
 
-def f1_metric(y_pred,y_true,cutoff=0.5):
-    y_pred = y_pred > cutoff;
-    y_true = y_true > cutoff;
-    tp = np.sum(y_pred * y_true)
-    fp = np.sum(y_pred > y_true)
-    fn = np.sum(y_pred < y_true)
-    tn = np.sum(y_pred == y_true) - tp
 
-    f1 = 2 * tp / (2 * tp + fp + fn)
-    return f1
+#Prediction / Inference code
+def model_test_prot_env(loader, model, DEVICE='cpu'):
+    """
+    Picap Prediction
+    Arguments:
+        loader (dataloader): test dataloader
+        model (str): picap loaded model
+        DEVICE (str): cpu / gpu
+    Returns:
+        prot_pred (arr): predicted values of protein
+        names (arr): pdb names associated with prot_pred
+    """
 
-def mcc_metric(y_pred,y_true,cutoff=0.5,eps=1e-5):
-    y_pred = y_pred > cutoff;
-    y_true = y_true > cutoff;
-    tp = np.sum(y_pred * y_true)
-    fp = np.sum(y_pred > y_true)
-    fn = np.sum(y_pred < y_true)
-    tn = np.sum(y_pred == y_true) - tp
+    loop = tqdm(loader)
+    prot_pred, prot_label = [], [];
+    res_pred, res_label = [],[];
+    names = []
 
-    mcc = tn * tp - fn * fp
-    mcc /= np.sqrt( (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn) + eps)
-    return mcc
+    n_stuff = 0
 
-def acc_metric(y_pred,y_true,cutoff=0.5,eps=1e-5):
-    #way to get it done 1x6 x 6x1
-    y_pred = np.transpose(y_pred[:,0] > cutoff);
-    y_true = np.array(y_true[:,0] > cutoff,dtype=float);
-    #print(np.shape(y_pred))
-    tp = np.matmul(y_pred, y_true)
-    acc = tp / np.size(y_pred)
-    print(tp,np.size(y_pred),acc)
-    return acc
+    model.eval()
+    for batch_idx, (node_feat, coor, edges, edge_feat, carb_binder, sm_binder, label_res, n_res, n_edge, name) in enumerate(loop):
 
-def print_metrics(epoch,step_loss,v_loss,v_pred,v_true,cutoff=0.5):
-    #print(np.shape(v_pred),np.shape(v_true))
-    v_pred = np.matrix(v_pred)
-    v_true = np.matrix(v_true)
-    y_pred = v_pred > cutoff;
-    y_true = v_true > cutoff;
-    tp = 0;
-    fp = 0;
-    fn = 0;
-    tn = 0;
-    for jj in range(len(v_pred[:,0])):
-        if y_true[jj,0] == 1:
-            if (y_true[jj,0] == y_pred[jj,0]):
-                if y_true[jj,0] == 1:
-                    tp += 1;
-                else:
-                    tn += 1;
-            else:
-                if y_true[jj,0] == 1:
-                    fn += 1;
-                else:
-                    fp += 1;
-    acc_1 = float( (tp + tn) / (tp + tn + fn + fp) )
-    dice_1 = float(2*tp / (2*tp + tn + fn))
-    acc_res_met = [];
-    dice_res_met = [];
-    for ii in range(len(carb_dict)):
-        tp = 0;
-        fp = 0;
-        fn = 0;
-        tn = 0;
+        with torch.no_grad():
 
-        for jj in range(len(v_pred)):
-            if y_true[jj,0] == 1:
-                if (y_true[jj,ii+1] == y_pred[jj,ii+1]):
-                    if y_true[jj,ii+1] == 1:
-                        tp += 1;
-                    else:
-                        tn += 1;
-                else:
-                    if y_true[jj,ii+1] == 1:
-                        fn += 1;
-                    else:
-                        fp += 1;
+            coor = coor.to(device=DEVICE,dtype=torch.float32).squeeze()
 
-        acc_res_met.append((tp + tn) / (tp + tn + fn + fp))
-        dice_res_met.append(2*tp / (2*tp + tn + fn))
+            #exit the fail_state
+            if len(coor.shape) < 2:
+                #print('skip')
+                continue;
 
-    o = str(epoch) + " " + str(step_loss) + " " + str(v_loss) + " " + str(acc_1) + " ";
-    for ii in range(len(acc_res_met)):
-        o += str(acc_res_met[ii]) + " "
-    for ii in range(len(dice_res_met)):
-        o += str(dice_res_met[ii]) + " "
-    print(o)
-    return
+            node_feat = node_feat.to(device=DEVICE,dtype=torch.float32).squeeze()
+            #exit the fail_state
+            if len(coor.shape) < 2:
+                continue;
+
+            pred_prot = model(node_feat, coor, edges, edge_feat,
+                            is_batch=False, n_res=n_res, n_edge=n_edge)
+
+
+            prot_pred.append(pred_prot.detach().cpu().numpy())
+            names.append(name)
+
+            n_stuff += 1
+
+    return prot_pred, names
+
+def model_test_res_env(loader, model, DEVICE='cpu',CUTOFF = 0.001):
+    """
+    Capsif2 Prediction
+    Arguments:
+        loader (dataloader): test dataloader
+        model (str): picap loaded model
+        DEVICE (str): cpu / gpu
+        CUTOFF (float): cutoff value for inferring if a residue binds
+    Returns:
+        pred_res (arr): predicted residues of protein
+        names (arr): pdb names associated with prot_pred
+        res_label (arr): PDB code of residues predicted to bind
+    """
+
+    loop = tqdm(loader)
+    pred_res, res_label = [], [];
+    res_pred, res_label = [],[];
+    names = []
+
+    n_stuff = 0
+
+    model.eval()
+    for batch_idx, (node_feat, coor, edges, edge_feat, carb_binder, sm_binder, label_res, n_res, n_edge, name, ref_pdb) in enumerate(loop):
+
+        with torch.no_grad():
+            coor = coor.to(device=DEVICE,dtype=torch.float32).squeeze()
+
+            #exit the fail_state
+            if len(coor.shape) < 2:
+                continue;
+
+            node_feat = node_feat.to(device=DEVICE,dtype=torch.float32).squeeze()
+
+            #exit the fail_state
+            if len(coor.shape) < 2:
+                continue;
+
+            pred = model(node_feat, coor, edges, edge_feat,
+                            is_batch=False, n_res=n_res, n_edge=n_edge)
+
+
+            pred_res.append(pred.detach().cpu().numpy())
+            c_p = pred.detach().cpu().numpy().reshape(-1)
+            c_res = []
+            for kk in range(len(c_p)):
+                if c_p[kk] > CUTOFF:
+                    c_res.append(ref_pdb[kk])
+
+            res_label.append( c_res )
+            names.append(name)
+
+            n_stuff += 1
+
+
+
+    return pred_res, names, res_label
 
 ### Notebook prediction utils ###
 #stolen from https://github.com/ProteinDesignLab/protein_seq_des/blob/master/seq_des/util/data.py
@@ -663,7 +677,6 @@ def download_pdb(pdb, data_dir):
     if not os.path.isfile(f):
         os.system("wget -O {} https://files.rcsb.org/download/{}.pdb".format(f, pdb.upper()))
     return f
-
 
 def visualize(pdb_file,r="a.b",width=600,height=500,colors=['lime','gray']):
     """
@@ -732,12 +745,16 @@ def pred_res_to_str(pred):
 
 def output_structure_bfactor(file,res,out_file):
     """
+    Outputs files for PDB for quick viewing of CAPSIF2 predictions
+
     Arguments:
-        file (string): Path to pdb file to be shown
+        file (string): Path to pdb file to edited
         res (string): residues predicted, (organized as NUM.CHAIN)
         out_file (string): output pdb file with capsif2 labeled residues
     Returns:
-        py3Dmol session with viewing the residues
+        void
+    Output:
+        pdb file at out_file
     """
 
     if (len(res) < 1):
@@ -773,8 +790,6 @@ def output_structure_bfactor(file,res,out_file):
     io.save(out_file)
 
     return;
-
-
 
 
 if __name__ == "__main__":
