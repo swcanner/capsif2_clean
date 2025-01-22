@@ -11,6 +11,17 @@ conda env create -f picap.yml
 conda activate picap
 ```
 
+###To get the model weights###
+```
+cd models_DL
+wget https://data.graylab.jhu.edu/picap_capsif2/model-picap.pt
+wget https://data.graylab.jhu.edu/picap_capsif2/model-capsif2.pt
+cd ..
+```
+
+
+Or you can manually download with the following:
+
 The weights of each model are stored on our remote server [`data.graylab.jhu.edu/picap_capsif2/`](https://data.graylab.jhu.edu/picap_capsif2/)
 
 Download `model-picap.pt` and `model-capsif2.pt` to `capsif2_clean/models_DL/`
