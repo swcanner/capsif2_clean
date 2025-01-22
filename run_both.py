@@ -93,6 +93,13 @@ PiCAP and CAPSIF2 help:
                     """)
                     exit()
 
+    print("Running with the following flags: ")
+    print("Run PiCAP : ",RUN_PICAP)
+    print("Run CAPSIF2: ",RUN_CAP)
+    print("Run High pLDDT only: ",HIGH_PL)
+    if HIGH_PL:
+        print("pLDDT cutoff: ",PL_CUT)
+
     return RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT, SINGLE
 
 
@@ -360,7 +367,7 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
     ls = os.listdir(int_dir)
     for ii in ls:
         filename, file_extension = os.path.splitext(int_dir + ii)
-        if '.npz' == file_extension or '.npz' == file_extension:
+        if '.npy' == file_extension or '.npz' == file_extension:
             os.remove(int_dir + ii)
 
     file = './output_data/all_predictions'
@@ -397,6 +404,11 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
     #return;
 
 if __name__ == "__main__":
+
+    #Maintain for reproducible values across both cpu and gpu
+    torch.backends.cuda.matmul.allow_tf32 = True
+
+
     RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT,  SINGLE = manage_flags(sys.argv)
 
     run_preprocess(HIGH_PL,PL_CUT)

@@ -104,7 +104,7 @@ def model_test_res_env(loader, model, DEVICE='cpu',CUTOFF = 0.001):
 
             #nodes = torch.ones(len(coor),1)
             #nodes = nodes.to(device=DEVICE,dtype=torch.int)
-            coor = coor.to(device=DEVICE,dtype=torch.float).squeeze()
+            coor = coor.to(device=DEVICE,dtype=torch.float32).squeeze()
 
             #print(coor.shape,nodes.shape)
             #exit the fail_state
@@ -112,7 +112,7 @@ def model_test_res_env(loader, model, DEVICE='cpu',CUTOFF = 0.001):
                 #print('skip')
                 continue;
 
-            node_feat = node_feat.to(device=DEVICE,dtype=torch.float).squeeze()
+            node_feat = node_feat.to(device=DEVICE,dtype=torch.float32).squeeze()
             #label_res = label_res.to(device=DEVICE,dtype=torch.float).squeeze()
             #label_prot = carb_binder.to(device=DEVICE,dtype=torch.float).squeeze()
             #edges = edges.to(device=DEVICE,dtype=torch.int)
