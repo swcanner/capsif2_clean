@@ -3,3 +3,4 @@ pre_pdb/*
 output_data/*
 input_pdb/*
 *pycache*
+*.DS_Store*
