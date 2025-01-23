@@ -27,7 +27,7 @@ The weights of each model are stored on our remote server [`data.graylab.jhu.edu
 Download `model-picap.pt` and `model-capsif2.pt` to `capsif2_clean/models_DL/`
 
 # How to run: Command Line #
-Put all PDB files into the `input_pdb/` directory
+Put all PDB (or CIF) files into the `input_pdb/` directory
 ```
 python run_both.py
 ```
@@ -54,10 +54,10 @@ All predictions for CAPSIF2 are also outputted individually as PDB files in the 
 
 
 # How to run: Notebook #
-Put all PDB files into the `input_pdb/` directory
+Put all PDB (or CIF) files into the `input_pdb/` directory
 
 ### Single structure prediction ###
-Load the `sample_notebook.ipynb` to run a single structure through (no high_plddt option provided), which allows quick analysis and viewing of a single structure.
+Load the `sample_notebook.ipynb` to run a single structure through (no `high_plddt` option provided), which allows quick analysis and viewing of a single structure.
 
 ### Multi structure prediction ###
 Load the `notebook_predict_directory.ipynb` and run the script to predict for all structures in the `input_pdb/` directory.
@@ -67,3 +67,4 @@ Load the `notebook_predict_directory.ipynb` and run the script to predict for al
 
 We include the NoCAP and DR datasets in the `datasets/` directory with a list of PDBs. All non-RCSB retrievable structures (e.g. designed non-binders and ProGen lysozymes) are at the remote server [`data.graylab.jhu.edu/picap_capsif2/`](https://data.graylab.jhu.edu/picap_capsif2/).
 
+Use case note, due to pyrosetta problems, we only can use PDB files for input so all cif files are converted using Bio.PDB to pdb files and then output as a pdb to the `output_data/` directory.
