@@ -4,3 +4,4 @@ output_data/*
 input_pdb/*
 *pycache*
 *.DS_Store*
+*ipynb_check*
