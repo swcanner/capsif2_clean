@@ -363,45 +363,6 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
     if RUN_PICAP:
         names_pi, pi_pred = run_picap(TEST_PDB,TEST_CLUST)
 
-    print('\n\n\n')
-
-    #remove intermediate files
-    int_dir = './pre_pdb/'
-    ls = os.listdir(int_dir)
-    for ii in ls:
-        filename, file_extension = os.path.splitext(int_dir + ii)
-        if '.npy' == file_extension or '.npz' == file_extension:
-            os.remove(int_dir + ii)
-
-    file = './output_data/all_predictions'
-    if single:
-        file += '_single'
-    file += '.tsv'
-    txt = ''
-    if not os.path.exists(file):
-        txt = 'NAME\tBinder_pred\tRes_pred\n'
-
-    if RUN_CAP and RUN_PICAP:
-        for ii in range(len(names_pi)):
-            for jj in range(len(names_cap)):
-                if names_pi[ii][0] == names_cap[jj][0]:
-                    txt += names_pi[ii][0] + '\t'
-                    txt += str(round(pi_pred[ii],4)) + '\t'
-                    for kk in range(len(cap_pred[jj])):
-                        txt += cap_pred[jj][kk][0] + ','
-                    txt += '\n'
-                    break;
-    if not single:
-        f = open(file,'a+')
-        f.write(txt)
-        f.close()
-
-    if OUTPUT_CMD:
-        print("Total output:")
-        print(txt)
-
-    print("\nFin.")
-
     return names_cap, names_pi, cap_pred, pi_pred
 
     #return;
@@ -411,9 +372,8 @@ if __name__ == "__main__":
     #Maintain for reproducible values across both cpu and gpu
     torch.backends.cuda.matmul.allow_tf32 = True
 
-
-    RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT,  SINGLE = manage_flags(sys.argv)
+    RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT, SINGLE = manage_flags(sys.argv)
 
     run_preprocess(HIGH_PL,PL_CUT)
     print("Preprocessing complete\n\n")
-    _, _, _, _ = run_it_all(RUN_CAP,RUN_PICAP)
+    names_cap, names_pi, cap_pred, pi_pred = run_it_all(RUN_CAP,RUN_PICAP)
