@@ -16,18 +16,26 @@ Usage: python run_both.py
     --picap_only [run picap only | default: False]
     --high_plddt [run only on high_plddt residues (with > `plddt_cutoff`) only | default: False]
     --plddt_cutoff [cutoff for when `--high_plddt` invoked | default: 70]
-Returns: `./output_data/predictions_res.tsv` - tsv of capsif2 residue predictions
+    --json [output to json file instead | default: False]
+Returns:
+    `./output_data/predictions_res.tsv` - tsv of capsif2 residue predictions
     `./output_data/predictions_prot.tsv` - tsv of picap predictions
     `./output_data/all_predictions.tsv` - tsv of capsif2 and picap predictions together
                 only done if picap and capsif2 are run together
-    and `output_data/*_predictions.pdb` with the pdbs with the BFactor identifying the binding CAPSIF2 Residues
 
+            OR
+
+    `./output_data/predictions.json` - json file of picap and/or capsif2 predictions
+
+
+    and `output_data/*_predictions.pdb` with the pdbs with the BFactor identifying the binding CAPSIF2 Residues
 """
 
 RUN_PICAP = True;
 RUN_CAP = True;
 HIGH_PL = False;
 PL_CUT = 70;
+JSON = False;
 
 OUTPUT_INT_TO_CMD = False;
 OUTPUT_CMD = True;
@@ -59,22 +67,25 @@ def manage_flags(flags):
         HIGH_PL (bool) : run only on high-res residues
         PL_CUT (str) : what is the cutoff for resolution
         SINGLE (bool) : only run on single structure (used only for notebooks)
+        JSON (bool) : run json output files only
     """
 
     #Get all flags all organized
     n = len(flags)
 
-    input_flags = ["--capsif_only","--picap_only",'--high_plddt','--plddt_cutoff','--single','--help']
+    input_flags = ["--capsif_only","--picap_only",'--high_plddt','--plddt_cutoff','--single','--json','--help']
 
     RUN_PICAP = True;
     RUN_CAP = True;
     HIGH_PL = False;
     PL_CUT = 70;
     SINGLE = False;
+    JSON = False;
 
     if n > 1:
         for kk in input_flags:
             if kk in flags:
+                kk = kk.lower()
                 ind = flags.index(kk);
 
                 if (kk == '--capsif_only'):
@@ -89,6 +100,8 @@ def manage_flags(flags):
                     PL_CUT = a
                 if (kk == '--single'):
                     SINGLE = True
+                if (kk == '--json'):
+                    JSON = True
 
                 if (kk == '--help'):
                     print("""
@@ -99,23 +112,32 @@ PiCAP and CAPSIF2 help:
         --picap_only [run picap only | default: False]
         --high_plddt [run only on high_plddt residues (with > `plddt_cutoff`) only | default: False]
         --plddt_cutoff [cutoff for when `--high_plddt` invoked | default: 70]
-    Returns: `./output_data/predictions_res.tsv` - tsv of capsif2 residue predictions
-        `./output_data/predictions_prot.tsv` - tsv of picap predictions
-        `./output_data/all_predictions.tsv` - tsv of capsif2 and picap predictions together
-                    only done if picap and capsif2 are run together
-        and `output_data/*_predictions.pdb` with the pdbs with the BFactor identifying the binding CAPSIF2 Residues
+        --json [output json files instead of tsv | default: False]
+    Returns:
+    `./output_data/predictions_res.tsv` - tsv of capsif2 residue predictions
+    `./output_data/predictions_prot.tsv` - tsv of picap predictions
+    `./output_data/all_predictions.tsv` - tsv of capsif2 and picap predictions together
+                only done if picap and capsif2 are run together
+
+            OR
+
+    `./output_data/predictions.json` - json file of picap and/or capsif2 predictions
+
+
+    and `output_data/*_predictions.pdb` with the pdbs with the BFactor identifying the binding CAPSIF2 Residue
                     """)
                     exit()
 
 
     print("\n\nRunning with the following flags: ")
-    print("Run PiCAP : ",RUN_PICAP)
-    print("Run CAPSIF2: ",RUN_CAP)
-    print("Run High pLDDT only: ",HIGH_PL)
+    print("Run PiCAP : \t",RUN_PICAP)
+    print("Run CAPSIF2: \t",RUN_CAP)
+    print("Run High pLDDT only: \t",HIGH_PL)
     if HIGH_PL:
-        print("pLDDT cutoff: ",PL_CUT)
+        print("pLDDT cutoff: \t",PL_CUT)
+    print("JSON output: \t", JSON)
 
-    return RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT, SINGLE
+    return RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT, SINGLE, JSON
 
 
 
@@ -129,8 +151,8 @@ from egnn.egnn import *
 import matplotlib.pyplot as plt
 from torchvision.models.feature_extraction import create_feature_extractor
 import re
+import json
 
-import os
 
 SPECIES = 'TEST_FILE'
 TEST_PDB =   './pre_pdb/dataset_pdb.csv'
@@ -150,7 +172,7 @@ if SINGLE:
     TEST_PDB =   './pre_pdb/dataset_single_pdb.csv'
     TEST_CLUST = './pre_pdb/dataset_single_clust.csv'
 
-def run_capsif2(TEST_PDB,TEST_CLUST):
+def run_capsif2(TEST_PDB,TEST_CLUST,JSON=False):
 
     """
     Runs Capsif2 and predicts all residues on given input pdb/cluster files
@@ -214,17 +236,25 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
     file = "./output_data/predictions_res.tsv"
     print('\n\t------Capsif2 results-------')
 
-    f = open(file,'a+')
+    f = []
+    if not JSON:
+        f = open(file,'a+')
+
     for ii in range(len(names)):
         #print(names[ii][0])
-        f.write(names[ii][0] + '\t')
+        if not JSON:
+            f.write(names[ii][0] + '\t')
         if OUTPUT_INT_TO_CMD:
             print(names[ii][0],end=":")
         for jj in range(len(res_label[ii])):
             if OUTPUT_INT_TO_CMD:
                 print(res_label[ii][jj][0], end=",")
-            f.write(res_label[ii][jj][0] + ',')
-        f.write('\n')
+
+            if not JSON:
+                f.write(res_label[ii][jj][0] + ',')
+        if not JSON:
+            f.write('\n')
+
         if OUTPUT_INT_TO_CMD:
             print()
 
@@ -234,6 +264,8 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
             #Get the name of the pdb without the chain name added
             instances = [m.start() for m in re.finditer('_', names[ii][0])]
             my_name = names[ii][0][:instances[-1]]
+            if 'highPL' in names[ii][0]:
+                my_name = names[ii][0][:instances[-2]]
 
             #need to get full name of the input pdb
             ls = os.listdir('./input_pdb/')
@@ -253,12 +285,13 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
             output_structure_bfactor(file='./input_pdb/' + the_input_pdb_file,res=pred_res_to_str(res_label[ii]),
                          out_file= './output_data/' + names[ii][0] + '_predictions.pdb')
 
-    f.close()
+    if not JSON:
+        f.close()
 
 
     return names, res_label
 
-def run_picap(TEST_PDB,TEST_CLUST):
+def run_picap(TEST_PDB,TEST_CLUST,JSON=False):
     """
     Runs Capsif2 and predicts all residues on given input pdb/cluster files
     Arguments:
@@ -327,14 +360,16 @@ def run_picap(TEST_PDB,TEST_CLUST):
         if OUTPUT_INT_TO_CMD:
             print(names[ii][0],',', str(prot_pred[ii]))
         out += str(names[ii][0]) + '\t' + str(round(prot_pred[ii],4)) + '\n'
-    if not os.path.exists(file):
-        out = 'PDB_NAME\tpred\n'
-    f = open(file,'a+')
-    f.write(out)
-    f.close()
+    if not JSON:
+        if not os.path.exists(file):
+            out = 'PDB_NAME\tpred\n'
+        f = open(file,'a+')
+        f.write(out)
+        f.close()
+
     return names, prot_pred
 
-def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
+def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False,JSON=False):
 
     """
     Runs all arguments in single function to do capsif2 and picap
@@ -359,9 +394,44 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
     names_cap, cap_pred = [], []
     names_pi, pi_pred = [], []
     if RUN_CAP:
-        names_cap, cap_pred = run_capsif2(TEST_PDB,TEST_CLUST)
+        names_cap, cap_pred = run_capsif2(TEST_PDB,TEST_CLUST,JSON)
+
     if RUN_PICAP:
-        names_pi, pi_pred = run_picap(TEST_PDB,TEST_CLUST)
+        names_pi, pi_pred = run_picap(TEST_PDB,TEST_CLUST,JSON)
+
+    #simple simple simple O(n2) json writing if both outputs
+    if JSON:
+        with open('output_data/predictions.json', 'w+') as f:
+            if RUN_PICAP and RUN_CAP:
+                for ii in range(len(names_cap)):
+                    for jj in range(len(names_pi)):
+                        if names_cap[ii][0] == names_pi[jj][0]:
+
+                            txt = ''
+                            for kk in range(len(cap_pred[ii])):
+                                txt += cap_pred[jj][kk][0] + ','
+
+                            mydict = {'name' : names_cap[ii][0],
+                                        'prot_pred': str(round(pi_pred[jj],4)),
+                                        'res_pred': txt}
+                            json.dump(mydict,f, indent=4);
+            elif RUN_PICAP:
+                for jj in range(len(names_pi)):
+                    mydict = {'name' : names_pi[jj][0],
+                                'prot_pred': str(round(pi_pred[jj],4))}
+                    json.dump(mydict,f, indent=4);
+            elif RUN_PICAP:
+                for ii in range(len(names_cap)):
+                    txt = ''
+                    for kk in range(len(cap_pred[ii])):
+                        txt += cap_pred[jj][kk][0] + ','
+
+                    mydict = {'name' : names_cap[ii][0],
+                                'res_pred': txt}
+                    json.dump(mydict,f, indent=4);
+        #return names_cap, names_pi, cap_pred, pi_pred
+
+
 
     print('\n\n\n')
 
@@ -392,9 +462,10 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False):
                     txt += '\n'
                     break;
     if not single:
-        f = open(file,'a+')
-        f.write(txt)
-        f.close()
+        if not JSON:
+            f = open(file,'a+')
+            f.write(txt)
+            f.close()
 
     if OUTPUT_CMD:
         print("Total output:")
@@ -412,8 +483,8 @@ if __name__ == "__main__":
     torch.backends.cuda.matmul.allow_tf32 = True
 
 
-    RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT,  SINGLE = manage_flags(sys.argv)
+    RUN_PICAP, RUN_CAP, HIGH_PL, PL_CUT, SINGLE, JSON = manage_flags(sys.argv)
 
     run_preprocess(HIGH_PL,PL_CUT)
     print("Preprocessing complete\n\n")
-    _, _, _, _ = run_it_all(RUN_CAP,RUN_PICAP)
+    names_cap, names_pi, cap_pred, pi_pred = run_it_all(RUN_CAP,RUN_PICAP,JSON=JSON)

@@ -338,22 +338,6 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
     #get all the files
     ls = os.listdir(input_dir)
 
-    if not os.path.isfile(output_dir + 'files_done.txt'):
-        f = open(output_dir + 'files_done.txt','w+')
-        f.write("")
-        f.close()
-
-    #only ouptut files that haven't been made yet
-    f = open(output_dir + 'files_done.txt','r+')
-    done = []
-    l = f.readlines()
-    for ii in l:
-        done.append(ii)
-    f.close()
-
-    f = open(output_dir + 'files_done.txt','a+')
-
-
     print('\npreprocessing...')
 
     if high_plddt:
@@ -421,12 +405,7 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
 
                 p = ii.split('/')[-1].split('.')[0] #get the name of the file
 
-                #only do new ones
-                if p in done:
-                    continue;
-                done.append(p)
-                f.write(p + '\n')
-                print(p)
+                print('preprocessing:\t',p)
 
                 try:
                     fa, beta = rosetta_preprocess(input_dir + ii, output_dir)
@@ -440,8 +419,6 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
                 except:
                     print("unable: ",ii)
         fasta.close()
-
-    f.close();
 
 
     print('making CSVs for file input')
