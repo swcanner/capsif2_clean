@@ -11,6 +11,8 @@ import torch
 import esm
 from tqdm import tqdm
 
+from utils import cif_to_pdb
+
 from pyrosetta import *
 from pyrosetta.rosetta import *
 from pyrosetta.teaching import *
@@ -359,7 +361,15 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
         for i in tqdm(range(len(ls))):
             ii = ls[i]
 
-            if ('.pdb' in ii):
+            if ('.pdb' in ii) or ('.cif' in ii):
+
+
+                #Make the cif file into a pdb file
+                if '.cif' in ii:
+                    new_pdb = cif_to_pdb(input_dir + ii)
+                    ii = new_pdb.split('/')[-1]
+
+
                 p = ii.split('/')[-1].split('.')[0] #get the name of the file
                 print(p)
 
@@ -403,7 +413,12 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
         for i in tqdm(range(len(ls))):
             ii = ls[i]
 
-            if ('.pdb' in ii):
+            if ('.pdb' in ii) or ('.cif' in ii):
+                #Make the cif file into a pdb file
+                if '.cif' in ii:
+                    new_pdb = cif_to_pdb(input_dir + ii)
+                    ii = new_pdb.split('/')[-1]
+
                 p = ii.split('/')[-1].split('.')[0] #get the name of the file
 
                 #only do new ones

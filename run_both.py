@@ -128,6 +128,7 @@ from utils import *
 from egnn.egnn import *
 import matplotlib.pyplot as plt
 from torchvision.models.feature_extraction import create_feature_extractor
+import re
 
 import os
 
@@ -230,16 +231,25 @@ def run_capsif2(TEST_PDB,TEST_CLUST):
         if OUTPUT_CAP2_PDBS:
             #output the CAPSIF2 predicted residues pdb
 
+            #Get the name of the pdb without the chain name added
+            instances = [m.start() for m in re.finditer('_', names[ii][0])]
+            my_name = names[ii][0][:instances[-1]]
+
             #need to get full name of the input pdb
             ls = os.listdir('./input_pdb/')
+
             the_input_pdb_file = ''
+
             for jj in ls:
-                if names[ii][0].split('_')[0] in jj:
+                if '.pdb' not in jj:
+                    continue;
+
+                if my_name in jj:
                     the_input_pdb_file = jj
                     break;
 
             if the_input_pdb_file == '':
-                print("something messed up in output of:",names[ii].split('_')[0])
+                print("something messed up in output of:",my_name)
             output_structure_bfactor(file='./input_pdb/' + the_input_pdb_file,res=pred_res_to_str(res_label[ii]),
                          out_file= './output_data/' + names[ii][0] + '_predictions.pdb')
 

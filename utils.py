@@ -743,6 +743,32 @@ def pred_res_to_str(pred):
 
     return txt
 
+def cif_to_pdb(file):
+    """
+    There exists an issue with pyrosetta loading in cif files
+    This function changes cif to pdb for input
+
+    Arguments:
+        file (string): Path to pdb file to edited
+    Returns:
+        out_file (string): output file
+    Output:
+        pdb file at out_file
+    """
+
+    parser = MMCIFParser()
+    data = parser.get_structure('CAPS',file)
+
+    #just change the extension to - super lazy
+    #may cause errors on non-trivial cases
+    out_file = file[:file.find('.cif')] + '.pdb'
+
+    io = PDBIO()
+    io.set_structure(data)
+    io.save(out_file)
+    return out_file
+
+
 def output_structure_bfactor(file,res,out_file):
     """
     Outputs files for PDB for quick viewing of CAPSIF2 predictions
