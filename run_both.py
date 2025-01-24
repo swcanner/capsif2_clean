@@ -233,6 +233,10 @@ def run_capsif2(TEST_PDB,TEST_CLUST,JSON=False):
 
     names = np.array(names)
 
+    #fix the names to not include "_0"
+    for ii in range(len(names)):
+        names[ii][0] = names[ii][0][ :names[ii][0].rfind('_') ]
+
     file = "./output_data/predictions_res.tsv"
     print('\n\t------Capsif2 results-------')
 
@@ -262,10 +266,12 @@ def run_capsif2(TEST_PDB,TEST_CLUST,JSON=False):
             #output the CAPSIF2 predicted residues pdb
 
             #Get the name of the pdb without the chain name added
-            instances = [m.start() for m in re.finditer('_', names[ii][0])]
-            my_name = names[ii][0][:instances[-1]]
+            #instances = [m.start() for m in re.finditer('_', names[ii][0])]
+            #my_name = names[ii][0][:instances[-1]]
+            my_name = names[ii][0]
             if 'highPL' in names[ii][0]:
-                my_name = names[ii][0][:instances[-2]]
+                my_name = names[ii][0][:names[ii][0].rfind('_')];
+
 
             #need to get full name of the input pdb
             ls = os.listdir('./input_pdb/')
@@ -352,6 +358,9 @@ def run_picap(TEST_PDB,TEST_CLUST,JSON=False):
     prot_pred = prot_pred.reshape((-1))
 
     names = np.array(names)
+    #fix the names to not include "_0"
+    for ii in range(len(names)):
+        names[ii][0] = names[ii][0][ :names[ii][0].rfind('_') ]
 
     file = "./output_data/predictions_prot.tsv"
     print('\n\t------PiCAP results-------')
@@ -401,34 +410,32 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False,JSON=False):
 
     #simple simple simple O(n2) json writing if both outputs
     if JSON:
-        with open('output_data/predictions.json', 'w+') as f:
-            if RUN_PICAP and RUN_CAP:
-                for ii in range(len(names_cap)):
-                    for jj in range(len(names_pi)):
-                        if names_cap[ii][0] == names_pi[jj][0]:
+        mydict = {}
 
-                            txt = ''
-                            for kk in range(len(cap_pred[ii])):
-                                txt += cap_pred[jj][kk][0] + ','
-
-                            mydict = {'name' : names_cap[ii][0],
-                                        'prot_pred': str(round(pi_pred[jj],4)),
-                                        'res_pred': txt}
-                            json.dump(mydict,f, indent=4);
-            elif RUN_PICAP:
+        if RUN_PICAP and RUN_CAP:
+            for ii in range(len(names_cap)):
                 for jj in range(len(names_pi)):
-                    mydict = {'name' : names_pi[jj][0],
-                                'prot_pred': str(round(pi_pred[jj],4))}
-                    json.dump(mydict,f, indent=4);
-            elif RUN_PICAP:
-                for ii in range(len(names_cap)):
-                    txt = ''
-                    for kk in range(len(cap_pred[ii])):
-                        txt += cap_pred[jj][kk][0] + ','
+                    if names_cap[ii][0] == names_pi[jj][0]:
+                        txt = ''
+                        for kk in range(len(cap_pred[ii])):
+                            txt += cap_pred[jj][kk][0] + ','
+                        mydict.update( { names_cap[ii][0] : {
+                                    'prot_pred': str(round(pi_pred[jj],4)),
+                                    'res_pred': txt} } )
+        elif RUN_PICAP:
+            for jj in range(len(names_pi)):
+                mydict.update( { names_pi[jj][0] : {
+                            'prot_pred': str(round(pi_pred[jj],4)) } } )
+        elif RUN_PICAP:
+            for ii in range(len(names_cap)):
+                txt = ''
+                for kk in range(len(cap_pred[ii])):
+                    txt += cap_pred[jj][kk][0] + ','
+                mydict.update( { names_cap[ii][0] : {
+                            'res_pred': txt} } )
 
-                    mydict = {'name' : names_cap[ii][0],
-                                'res_pred': txt}
-                    json.dump(mydict,f, indent=4);
+        with open('output_data/predictions.json', 'w+') as f:
+            json.dump(mydict,f, indent=4);
         #return names_cap, names_pi, cap_pred, pi_pred
 
 
