@@ -377,11 +377,11 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
                                 ref.append(ref_[kk][jj])
                                 es.append(es_[kk][jj])
 
-                        n = p + "_" + str(kk)
+                        n = p + "_highPL_" + str(kk)
                         #print(len(fa[kk][1]),len(ca),len(cb),len(es))
 
-                        np.savez(output_dir + n + "_highPL.npz",ca=np.array(ca),cb=np.array(cb),frame=np.array(fi),ref=np.array(ref))
-                        np.save(output_dir + n + "_highPL_esm.npz.npy",es)
+                        np.savez(output_dir + n + ".npz",ca=np.array(ca),cb=np.array(cb),frame=np.array(fi),ref=np.array(ref))
+                        np.save(output_dir + n + "_esm.npz.npy",es)
 
 
                     #for i in range(len(fa)):
@@ -451,6 +451,9 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
 
         name = p.split('.')[0];
         short_name = name[:name.rfind('_')]
+        #if 'highPL' in short_name:
+        #    short_name = short_name[:short_name.rfind('_')+1]
+        #    print(short_name)
 
         if short_name in done:
             continue;
