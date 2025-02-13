@@ -11,6 +11,8 @@ import torch
 import esm
 from tqdm import tqdm
 
+import sys
+
 from utils import cif_to_pdb
 
 from pyrosetta import *
@@ -392,7 +394,7 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
                     if num_res < 10:
                         print('Less than 10 residues were available for input protein structure above the requested plddt_cutoff of ' + str(plddt_cut))
                         print('Exiting...')
-                        exit()
+                        sys.exit(1)
 
                     #for i in range(len(fa)):
                     #    fasta.write('>' + fa[i][0] + '|' + str(beta[i]) + '\n' + fa[i][1] + '\n')
