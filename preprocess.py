@@ -362,6 +362,8 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
                     fa, ca_,cb_,f_,ref_, beta_ = rosetta_highPL_preprocess(input_dir + ii)
                     es_ = esm_preprocess(fa,model,alphabet,batch_converter,output_dir, high_plddt)
 
+                    num_res = 0
+
                     for kk in range(len(fa)):
 
                         ca,cb,fi,ref,es = [],[],[],[],[]
@@ -369,13 +371,17 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
                         for jj in range(len(fa[kk][1])):
                             #print('\t',fa[kk][1][jj])
 
+
                             #only output the ones above plddt cutoff
                             if beta_[kk][jj] > plddt_cut:
+                                num_res += 1;
                                 ca.append(ca_[kk][jj])
                                 cb.append(cb_[kk][jj])
                                 fi.append(f_[kk][jj])
                                 ref.append(ref_[kk][jj])
                                 es.append(es_[kk][jj])
+
+
 
                         n = p + "_highPL_" + str(kk)
                         #print(len(fa[kk][1]),len(ca),len(cb),len(es))
@@ -383,6 +389,10 @@ def run_preprocess(high_plddt=False,plddt_cut=70):
                         np.savez(output_dir + n + ".npz",ca=np.array(ca),cb=np.array(cb),frame=np.array(fi),ref=np.array(ref))
                         np.save(output_dir + n + "_esm.npz.npy",es)
 
+                    if num_res < 10:
+                        print('Less than 10 residues were available for input protein structure above the requested plddt_cutoff of ' + str(plddt_cut))
+                        print('Exiting...')
+                        exit()
 
                     #for i in range(len(fa)):
                     #    fasta.write('>' + fa[i][0] + '|' + str(beta[i]) + '\n' + fa[i][1] + '\n')
