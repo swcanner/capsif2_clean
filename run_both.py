@@ -250,6 +250,10 @@ def run_capsif2(TEST_PDB,TEST_CLUST,JSON=False):
             f.write(names[ii][0] + '\t')
         if OUTPUT_INT_TO_CMD:
             print(names[ii][0],end=":")
+            if len(res_label[ii]) < 1:
+                print(' n/a',end='')
+                f.write('n/a')
+
         for jj in range(len(res_label[ii])):
             if OUTPUT_INT_TO_CMD:
                 print(res_label[ii][jj][0], end=",")
@@ -466,6 +470,8 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False,JSON=False):
                     txt += str(round(pi_pred[ii],4)) + '\t'
                     for kk in range(len(cap_pred[jj])):
                         txt += cap_pred[jj][kk][0] + ','
+                    if len(cap_pred[jj]) < 1:
+                        txt += 'n/a'
                     txt += '\n'
                     break;
     if not single:
