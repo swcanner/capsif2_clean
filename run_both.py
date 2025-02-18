@@ -371,7 +371,7 @@ def run_picap(TEST_PDB,TEST_CLUST,JSON=False):
         out += str(names[ii][0]) + '\t' + str(round(prot_pred[ii],4)) + '\n'
     if not JSON:
         if not os.path.exists(file):
-            out = 'PDB_NAME\tpred\n'
+            out = 'PDB_NAME\tpred\n' + out
         f = open(file,'a+')
         f.write(out)
         f.close()
@@ -474,7 +474,7 @@ def run_it_all(RUN_CAP=True,RUN_PICAP=True,single=False,JSON=False):
             f.write(txt)
             f.close()
 
-    if OUTPUT_CMD:
+    if OUTPUT_CMD and RUN_CAP and RUN_PICAP:
         print("Total output:")
         print(txt)
 
