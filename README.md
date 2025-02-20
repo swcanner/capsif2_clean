@@ -68,3 +68,7 @@ Load the `notebook_predict_directory.ipynb` and run the script to predict for al
 We include the NoCAP and DR datasets in the `datasets/` directory with a list of PDBs. All non-RCSB retrievable structures (e.g. designed non-binders and ProGen lysozymes) are at the remote server [`data.graylab.jhu.edu/picap_capsif2/`](https://data.graylab.jhu.edu/picap_capsif2/).
 
 Use case note, due to pyrosetta problems, we only can use PDB files for input so all cif files are converted using Bio.PDB to pdb files and then output as a pdb to the `output_data/` directory.
+
+
+### Training Code ###
+A simplified version of the training code is provided in `./training_code/` for quick modification and alteration if desired.
