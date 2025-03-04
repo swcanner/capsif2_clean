@@ -107,7 +107,7 @@ class CSV_Dataset(Dataset):
                 new_df = self.pdb_data[self.pdb_data[1] == pdb_name].values[0]
                 #print(new_df,clust)
                 if clust != new_df[0]:
-                    print("WHAT THE FUCK?!?!?! CLUSTERS: ",clust,new_df[0],pdb_name)
+                    print("Failure to match: ",clust,new_df[0],pdb_name)
 
                 coor_files = new_df[2]
                 esm_files = new_df[3]
@@ -115,9 +115,6 @@ class CSV_Dataset(Dataset):
                 carb_binder = new_df[5]
                 sm_binder = new_df[6]
 
-                #print(coor_files)
-                #print(esm_files)
-                #print(af_files)
             except:
                 print("Failure to find: ",clust,pdb_name)
                 return self.fail_state
@@ -160,9 +157,6 @@ class CSV_Dataset(Dataset):
                     else:
                         ca,cb,frame = ca_af,cb_af,frame_af
 
-        #print(np.shape(res_label))
-        #print(res_label[:50])
-        #print(np.shape(res_label.shape())
         if bool(carb_binder):
             if len(np.shape(res_label)) > 1:
                 res_label = torch.unsqueeze(torch.from_numpy(res_label[:,0]),1)
@@ -173,9 +167,7 @@ class CSV_Dataset(Dataset):
             res_label = torch.unsqueeze(torch.from_numpy(res_label),1)
         esm_ = self.load_esm(esm_files)
 
-        #except:
-        #    return self.fail_state;
-        #print(pdb_name,len(cb))
+
         self.n_res = esm_.shape[0]
 
         #get the neighbors!
@@ -206,11 +198,8 @@ class CSV_Dataset(Dataset):
         """
         oneHot = np.zeros((len(carb_dict),))
 
-        #print(carbs,type(carbs))
         if type(carbs) == type(np.nan):
             return oneHot
-        #if np.isnan(carbs):
-        #    return oneHot
         if carbs == "":
             return oneHot
 
@@ -273,7 +262,7 @@ class CSV_Dataset(Dataset):
 
             for jj in range(len(ca_c)):
                 #REMOVE DUPLICATES!!!!
-                #this is a very lazy unoptimized way to do this but it works so fuck it
+                #this is a very lazy unoptimized way to do this but it works
                 skip_round = False;
                 for kk in range(len(ca)):
                     if ca_c[jj][0] == ca[kk][0]:
@@ -288,22 +277,10 @@ class CSV_Dataset(Dataset):
                 cb.append(cb_c[jj])
                 frame.append(frame_c[jj])
                 if self.train:
-                    #messed up on adding 0 to end :)
                     if jj >= len(label_c):
-                        #print("ADDED 0")
                         label.append(0)
                     else:
-
-                        #print(label_c[jj])
-                        #if jj < 3:
-                            #print(label_c[jj],'\n',label_c[jj].tolist())
-                        #print(ca_c[jj],label_c[jj])
-                        #if len(label_c[jj]) != 17:
-                        #    print('penis',len(label_c[jj]))
                         label.append(label_c[jj])
-                        #print(len(label[jj]))
-
-        #print(label[:10])
 
         ca = np.array(ca)
         cb = np.array(cb)
@@ -339,15 +316,7 @@ class CSV_Dataset(Dataset):
         for ii in l:
             #print(self.root_dir + ii)
             curr = np.load(self.root_dir + ii)
-
-
-            #print(curr)
-
-            #for k in curr.files:
-            #    print(k)
             c_ref = curr['ref']
-
-
             for jj in range(len(c_ref)):
 
                 ref.append(c_ref[jj])
@@ -400,11 +369,8 @@ class CSV_Dataset(Dataset):
             edge_feats (2d array): Edge features of each edge above - first index is array num-neigh related
         """
 
-        #print(coor[:12,:])
         dist = dm(coor,coor);
-        #print(dist[:12,:12])
         dist_sort = np.argsort(dist)
-        #print(dist_sort[:12,:12])
         edge1 = [];
         edge2 = [];
         feats = [];
@@ -439,13 +405,11 @@ class CSV_Dataset(Dataset):
                 orient = np.matmul( frame[i],np.transpose(frame[kk]) )
                 o = R.from_matrix(orient)
                 quat = o.as_quat()
-                #ori.append(o.as_quat())
 
                 #get direction
                 vec = coor[dist_sort[i,kk]] - coor[i] + eps;
                 vec /= np.linalg.norm(vec);
                 direct = np.matmul( frame[i], vec)
-                #dir.append(direct);
 
                 #put all info into a single array;
                 val = [];
@@ -464,7 +428,6 @@ class CSV_Dataset(Dataset):
                         feats[jj].append(val)
 
         fake_val = list( np.zeros((23,)) )
-        #print(np.shape(fake_val),np.shape(feats[jj]))
         #concatenate them and make them torch-worthy
         #get the num_edges
 
@@ -472,7 +435,6 @@ class CSV_Dataset(Dataset):
         for ii in edge1:
             n_edges.append(np.shape(ii)[0])
         self.n_edge = n_edges
-        #print(n_edges)
 
         edges = [];
         for jj in range(len(num_neigh)):
@@ -570,7 +532,6 @@ def model_test_prot_env(loader, model, DEVICE='cpu'):
 
             #exit the fail_state
             if len(coor.shape) < 2:
-                #print('skip')
                 continue;
 
             node_feat = node_feat.to(device=DEVICE,dtype=torch.float32).squeeze()
